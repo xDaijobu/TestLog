@@ -1,17 +1,52 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
-             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:camera2="clr-namespace:TestLog.Camera2"
-             x:Class="TestLog.MainPage">
+<ContentPage
+    x:Class="TestLog.MainPage"
+    xmlns="http://xamarin.com/schemas/2014/forms"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:camera2="clr-namespace:TestLog.Camera2">
 
-        <StackLayout>
-            
-            <camera2:CameraPreview HeightRequest="300" WidthRequest="500" x:Name="cameraPreview" CameraOptions="Front"/>
-            <Grid BackgroundColor="Red" HeightRequest="200" RowDefinitions="35, 35">
-                <Button Text="Take Photo" Clicked="Button_Clicked" Grid.Row="0" Grid.Column="0"/>
-                <Button Text="CameraOptions" Clicked="Button_Clicked_1" Grid.Row="0" Grid.Column="1"/>
-                <Button Text="Flash Off" Clicked="Button_Clicked_2" Grid.Row="1" Grid.Column="0" x:Name="btnFlash"/>
-                <Button Text="Close" Clicked="Button_Clicked_3" Grid.Row="1" Grid.Column="1"/>
-            </Grid>
-            <Image HeightRequest="200" WidthRequest="200" x:Name="image"/>
+    <Grid>
+        <!--  first layer  -->
+        <camera2:CameraPreview x:Name="cameraPreview" CameraOptions="Front" />
+
+        <StackLayout
+            Margin="10"
+            HorizontalOptions="FillAndExpand"
+            Orientation="Horizontal"
+            VerticalOptions="StartAndExpand">
+            <Button
+                Clicked="Button_Clicked_3"
+                HorizontalOptions="StartAndExpand"
+                Text="Close" />
+
+            <Button
+                x:Name="btnFlash"
+                Clicked="Button_Clicked_2"
+                HorizontalOptions="EndAndExpand"
+                Text="Flash Off" />
         </StackLayout>
+
+        <StackLayout
+            Margin="10"
+            HorizontalOptions="FillAndExpand"
+            Orientation="Horizontal"
+            VerticalOptions="EndAndExpand">
+            <Image
+                x:Name="image"
+                HeightRequest="50"
+                HorizontalOptions="StartAndExpand"
+                VerticalOptions="CenterAndExpand"
+                WidthRequest="50" />
+            <Button
+                Clicked="Button_Clicked"
+                HorizontalOptions="CenterAndExpand"
+                Text="Take Photo"
+                VerticalOptions="CenterAndExpand" />
+            <Button
+                Clicked="Button_Clicked_1"
+                HorizontalOptions="EndAndExpand"
+                Text="Switch Cam"
+                VerticalOptions="CenterAndExpand" />
+        </StackLayout>
+    </Grid>
 </ContentPage>

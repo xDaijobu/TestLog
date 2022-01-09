@@ -28,6 +28,10 @@ using Math = Java.Lang.Math;
 using Exception = System.Exception;
 using File = Java.IO.File;
 using Environment = Android.OS.Environment;
+using Android.OS;
+using AndroidX.Camera.Core.Internal.Utils;
+using Java.IO;
+using Android.Media;
 
 [assembly: ExportRenderer(typeof(CameraPreview), typeof(CameraPreviewRenderer))]
 namespace TestLog.Droid.Camera2
@@ -57,7 +61,7 @@ namespace TestLog.Droid.Camera2
                 return _context is ILifecycleOwner _lifecycleOwner ? _lifecycleOwner : _context.GetActivity() as ILifecycleOwner;
             }
         }
-        
+
         #endregion
         private CameraPreview _currentElement;
         private readonly Context _context;
@@ -90,7 +94,7 @@ namespace TestLog.Droid.Camera2
             // Callback for preview visibility
             previewObserver = new PreviewObserver(camera, previewView);
             previewView.PreviewStreamState.Observe(lifecycleOwner, previewObserver);
-            
+
             return previewView;
         }
 
@@ -100,7 +104,7 @@ namespace TestLog.Droid.Camera2
             _currentElement = e.NewElement;
             previewView = await InitPreviewView();
             outputDirectory = GetOutputDirectory();
-            
+
             SetNativeControl(previewView);
         }
 
@@ -153,7 +157,7 @@ namespace TestLog.Droid.Camera2
 
                     // Used to bind the lifecycle of cameras to the lifecycle owner
                     cameraProvider = (ProcessCameraProvider)cameraProviderFuture.Get();
-                    
+
                     // Preview
                     cameraPreview = new Preview.Builder().Build();
                     cameraPreview.SetSurfaceProvider(previewView.SurfaceProvider);
@@ -168,7 +172,7 @@ namespace TestLog.Droid.Camera2
                         TakePicture();
                     });
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine("Error ! : " + ex);
                 }
@@ -199,38 +203,92 @@ namespace TestLog.Droid.Camera2
 
             // Get a stable reference of the modifiable image capture use case   
             var imageCapture = this.imageCapture;
+            imageCapture.TargetRotation = 0;
             if (imageCapture == null)
                 return;
+            //// Create time-stamped output file to hold the image
+            //var photoFile = new File(outputDirectory, new Java.Text.SimpleDateFormat(FILENAME_FORMAT, Locale.Us).Format(JavaSystem.CurrentTimeMillis()) + ".jpg");
 
-            // Create time-stamped output file to hold the image
-            var photoFile = new File(outputDirectory, new Java.Text.SimpleDateFormat(FILENAME_FORMAT, Locale.Us).Format(JavaSystem.CurrentTimeMillis()) + ".jpg");
-
-            // Create output options object which contains file + metadata
-            var outputOptions = new OutputFileOptions.Builder(photoFile).Build();
+            //// Create output options object which contains file + metadata
+            //var outputOptions = new OutputFileOptions.Builder(photoFile).Build();
 
             // Set up image capture listener, which is triggered after photo has been taken
-            imageCapture.TakePicture(outputOptions, ContextCompat.GetMainExecutor(_context), new ImageSaveCallback(
 
+            #region Versi 1: This method provides an in-memory buffer of the captured image.
+            imageCapture.TakePicture(ContextCompat.GetMainExecutor(_context), new ImageCapturedCallback(
                 onErrorCallback: (exc) =>
                 {
                     var msg = $"Photo capture failed: {exc.Message}";
+
+                    if (Build.VERSION.SdkInt >= BuildVersionCodes.R)
+                    {
+                        if (!Environment.IsExternalStorageManager)
+                        {
+                            _context.GetActivity().StartActivityForResult(new Intent(Android.Provider.Settings.ActionManageAllFilesAccessPermission), 0);
+                        }
+                    }
+
                     Log.Error(TAG, msg, exc);
                     Toast.MakeText(_context, msg, ToastLength.Short).Show();
                 },
-
-                onImageSaveCallback: (output) =>
+                onCapturedSuccessCallback: (imageProxy) =>
                 {
-                    var data = System.IO.File.ReadAllBytes(photoFile?.Path);
-                    _currentElement?.RaiseMediaCaptured(new MediaCapturedEventArgs(imageData: data, path: photoFile?.Path));
+                    string path = $"{outputDirectory}/{new Java.Text.SimpleDateFormat(FILENAME_FORMAT, Locale.Us).Format(JavaSystem.CurrentTimeMillis())}{".jpg"}";
+
+                    /* https://developer.android.com/reference/androidx/camera/core/ImageInfo#getRotationDegrees() */
+                    int correctOrientation = imageProxy.ImageInfo.RotationDegrees;
+                    System.Diagnostics.Debug.WriteLine("Correct Rotation: " + correctOrientation);
+
+                    /* imageproxy to bitmap */
+                    var data = ImageUtil.ImageToJpegByteArray(imageProxy);
+                    var imageBitmap = BitmapFactory.DecodeByteArray(data, 0, data.Length);
+
+                    var finalBitmap = RotateBitmap(imageBitmap, correctOrientation);
+                    imageProxy.Close();
+
+                    using (FileStream os = new FileStream(path, FileMode.Create))
+                    {
+                        finalBitmap.Compress(Bitmap.CompressFormat.Png, 100, os);
+                        os.Close();
+                    }
+
+                    _currentElement?.RaiseMediaCaptured(new MediaCapturedEventArgs(imageData: data, path: path));
                 }
-            ));
+                ));
+            #endregion
+            //#region Versi 2: This method saves the captured image to the provided file location.
+            //imageCapture.TakePicture(outputOptions, ContextCompat.GetMainExecutor(_context), new ImageSaveCallback(
+
+            //    onErrorCallback: (exc) =>
+            //    {
+            //        var msg = $"Photo capture failed: {exc.Message}";
+
+
+            //        if (Build.VERSION.SdkInt >= BuildVersionCodes.R)
+            //        {
+            //            if (!Android.OS.Environment.IsExternalStorageManager)
+            //            {
+            //                _context.GetActivity().StartActivityForResult(new Intent(Android.Provider.Settings.ActionManageAllFilesAccessPermission), 0);
+            //            }
+            //        }
+
+            //        Log.Error(TAG, msg, exc);
+            //        Toast.MakeText(_context, msg, ToastLength.Short).Show();
+            //    },
+
+            //    onImageSaveCallback: (output) =>
+            //    {
+            //        var data = System.IO.File.ReadAllBytes(photoFile?.Path);
+            //        _currentElement?.RaiseMediaCaptured(new MediaCapturedEventArgs(imageData: data, path: photoFile?.Path));
+            //    }
+            //));
+            //#endregion
         }
 
         // Save photos to => /Pictures/CameraX/
         [Obsolete]
         private File GetOutputDirectory()
         {
-            //var mediaDir = GetExternalMediaDirs().FirstOrDefault();  
             File mediaDir = Environment.GetExternalStoragePublicDirectory(System.IO.Path.Combine(Environment.DirectoryPictures, directory));
 
             if (mediaDir != null && mediaDir.Exists())
@@ -356,7 +414,7 @@ namespace TestLog.Droid.Camera2
             cameraSelector?.Dispose();
             cameraProvider?.Dispose();
             camera?.Dispose();
-            
+
             base.Dispose(disposing);
         }
 
@@ -387,6 +445,13 @@ namespace TestLog.Droid.Camera2
             tmpOut.CopyTo(outputBitmap);
 
             return outputBitmap;
+        }
+
+        public Bitmap RotateBitmap(Bitmap source, float angle)
+        {
+            Matrix matrix = new Matrix();
+            matrix.PostRotate(angle);
+            return Bitmap.CreateBitmap(source, 0, 0, source.Width, source.Height, matrix, true);
         }
     }
 }

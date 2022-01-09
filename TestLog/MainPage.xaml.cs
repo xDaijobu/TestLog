@@ -18,7 +18,6 @@ namespace TestLog
         protected override void OnAppearing()
         {
             base.OnAppearing();
-
             
             cameraPreview.MediaCaptured += (s, args) =>
             {
