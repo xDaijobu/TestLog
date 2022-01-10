@@ -41,6 +41,7 @@ namespace TestLog
             {
                 Latitude = 1.1231231,
                 Longitude = 108.555555,
+                Address = "Kirana Two Kelapa Gading Jakarta Utara"
             };
         }
 
