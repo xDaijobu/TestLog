@@ -36,6 +36,12 @@ namespace TestLog
                 PhotoSize = Camera2.PhotoSize.Small,
                 MaxWidthHeight = 2000,
             };
+
+            cameraPreview.Location = new Camera2.Location()
+            {
+                Latitude = 1.1231231,
+                Longitude = 108.555555,
+            };
         }
 
         protected override bool OnBackButtonPressed()

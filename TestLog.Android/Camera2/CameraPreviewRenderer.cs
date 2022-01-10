@@ -13,7 +13,6 @@ using Android.Widget;
 using Android.Graphics.Drawables;
 using Android.Views;
 using Java.Lang;
-using Java.Nio;
 using Java.Util;
 using Java.Util.Concurrent;
 using TestLog.Camera;
@@ -22,7 +21,6 @@ using TestLog.Droid.Camera2;
 using Xamarin.Forms;
 using Xamarin.Forms.Platform.Android;
 using AndroidX.Lifecycle;
-using Android.Renderscripts;
 using static AndroidX.Camera.Core.ImageCapture;
 using Math = Java.Lang.Math;
 using Exception = System.Exception;
@@ -30,8 +28,6 @@ using File = Java.IO.File;
 using Environment = Android.OS.Environment;
 using Android.OS;
 using AndroidX.Camera.Core.Internal.Utils;
-using Java.IO;
-using Android.Media;
 
 [assembly: ExportRenderer(typeof(CameraPreview), typeof(CameraPreviewRenderer))]
 namespace TestLog.Droid.Camera2
@@ -62,7 +58,7 @@ namespace TestLog.Droid.Camera2
             }
         }
         MediaOptions mediaOptions;
-
+        Location location;
         #endregion
         private CameraPreview _currentElement;
         private readonly Context _context;
@@ -80,20 +76,13 @@ namespace TestLog.Droid.Camera2
             var previewView = new PreviewView(_context);
             UpdateCameraOptions(Element.CameraOptions);
             mediaOptions = Element.MediaOptions;
-            //previewView.SetImplementationMode(PreviewView.ImplementationMode.Performance);
-            //var textView = new TextView(MainActivity.Instance);
-            //textView.Text = "hayyyy HAYY HELLLLOO OWORLDD";
-            //previewView.AddView(textView);
-            //textView.SetHeight(200);
-            //textView.SetWidth(500);
-            //previewView.Overlay.Add(convertViewToBitmap(textView));
+            location = Element.Location;
 
             cameraExecutor = Executors.NewSingleThreadExecutor();
             Connect();
 
-
             // Callback for preview visibility
-            previewObserver = new PreviewObserver(camera, previewView);
+            previewObserver = new PreviewObserver(camera, previewView, location);
             previewView.PreviewStreamState.Observe(lifecycleOwner, previewObserver);
 
             return previewView;
@@ -127,6 +116,14 @@ namespace TestLog.Droid.Camera2
 
             if (e.PropertyName == nameof(CameraPreview.MediaOptions))
                 mediaOptions = Element.MediaOptions;
+
+            if (e.PropertyName == nameof(CameraPreview.Location))
+            {
+                location = Element.Location;
+                System.Diagnostics.Debug.WriteLine("Lat: " + location.Latitude);
+                System.Diagnostics.Debug.WriteLine("Lon: " + location.Longitude);
+                previewObserver.DrawAction(location);
+            }
         }
 
         public async Task<bool> CheckPermissions()
@@ -134,19 +131,6 @@ namespace TestLog.Droid.Camera2
             await Xamarin.Essentials.Permissions.RequestAsync<Xamarin.Essentials.Permissions.StorageRead>();
             await Xamarin.Essentials.Permissions.RequestAsync<Xamarin.Essentials.Permissions.StorageWrite>();
             return (await Xamarin.Essentials.Permissions.RequestAsync<Xamarin.Essentials.Permissions.Camera>()) == Xamarin.Essentials.PermissionStatus.Granted;
-        }
-
-        public Drawable convertViewToBitmap(Android.Views.View view)
-        {
-            view.Measure(
-                MeasureSpec.MakeMeasureSpec(0, Android.Views.MeasureSpecMode.Unspecified),
-                MeasureSpec.MakeMeasureSpec(0, Android.Views.MeasureSpecMode.Unspecified)
-            );
-            view.Layout(0, 0, view.MeasuredWidth, view.MeasuredHeight);
-            view.BuildDrawingCache();
-            Bitmap bitmap = view.DrawingCache;
-            Drawable d = new BitmapDrawable(_context.Resources, bitmap);
-            return d;
         }
 
         public void Connect()
@@ -424,48 +408,9 @@ namespace TestLog.Droid.Camera2
             cameraSelector?.Dispose();
             cameraProvider?.Dispose();
             camera?.Dispose();
+            previewObserver?.Dispose();
 
             base.Dispose(disposing);
-        }
-
-        private static byte[] GetByteArrayFromByteBuffer(ByteBuffer byteBuffer)
-        {
-            byte[] bytesArray = new byte[byteBuffer.Remaining()];
-            byteBuffer.Get(bytesArray, 0, bytesArray.Length);
-            return bytesArray;
-        }
-
-        private Bitmap BlurRenderScript(Bitmap smallBitmap, int radius)
-        {
-            float defaultBitmapScale = 0.1f;
-
-            int width = Math.Round(smallBitmap.Width * defaultBitmapScale);
-            int height = Math.Round(smallBitmap.Height * defaultBitmapScale);
-
-            Bitmap inputBitmap = Bitmap.CreateScaledBitmap(smallBitmap, width, height, false);
-            Bitmap outputBitmap = Bitmap.CreateBitmap(inputBitmap);
-
-            RenderScript renderScript = RenderScript.Create(_context);
-            ScriptIntrinsicBlur theIntrinsic = ScriptIntrinsicBlur.Create(renderScript, Android.Renderscripts.Element.U8_4(renderScript));
-            Allocation tmpIn = Allocation.CreateFromBitmap(renderScript, inputBitmap);
-            Allocation tmpOut = Allocation.CreateFromBitmap(renderScript, outputBitmap);
-            theIntrinsic.SetRadius(radius);
-            theIntrinsic.SetInput(tmpIn);
-            theIntrinsic.ForEach(tmpOut);
-            tmpOut.CopyTo(outputBitmap);
-
-            return outputBitmap;
-        }
-
-        public Bitmap RotateBitmap(Bitmap source, float angle)
-        {
-            Matrix matrix = new Matrix();
-            matrix.PostRotate(angle);
-
-            Bitmap rotatedImage = Bitmap.CreateBitmap(source, 0, 0, source.Width, source.Height, matrix, true);
-            source.Recycle();
-
-            return rotatedImage;
         }
 
         // nyontek dari https://github.com/jamesmontemagno/MediaPlugin/blob/master/src/Media.Plugin/Android/MediaImplementation.cs#L652-L793
