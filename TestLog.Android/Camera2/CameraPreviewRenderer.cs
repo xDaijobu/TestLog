@@ -122,7 +122,7 @@ namespace TestLog.Droid.Camera2
                 location = Element.Location;
                 System.Diagnostics.Debug.WriteLine("Lat: " + location.Latitude);
                 System.Diagnostics.Debug.WriteLine("Lon: " + location.Longitude);
-                previewObserver.DrawAction(location);
+                previewObserver?.DrawAction(location);
             }
         }
 
