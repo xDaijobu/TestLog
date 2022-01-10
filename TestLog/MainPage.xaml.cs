@@ -37,11 +37,15 @@ namespace TestLog
                 MaxWidthHeight = 2000,
             };
 
-            cameraPreview.Location = new Camera2.Location()
+            cameraPreview.Placemark = new Camera2.Placemark()
             {
-                Latitude = 1.1231231,
-                Longitude = 108.555555,
-                Address = "Kirana Two Kelapa Gading Jakarta Utara"
+                Location = new Camera2.Location()
+                {
+                    Latitude = 1.1231231,
+                    Longitude = 108.555555,
+                },
+                CountryName = "Indonesia",
+                SubAdminArea = "Testing",
             };
         }
 

@@ -14,15 +14,15 @@ namespace TestLog.Droid.Camera2
 {
     public class PreviewObserver : Java.Lang.Object, IObserver, IAnimatorUpdateListener
     {
-        Location _location;
-        public Action<Location> DrawAction => DrawSomething;
+        Placemark _placemark;
+        public Action<Placemark> DrawAction => DrawSomething;
         readonly ICamera _camera;
         readonly PreviewView _previewView;
-        public PreviewObserver(ICamera camera, PreviewView previewView, Location location)
+        public PreviewObserver(ICamera camera, PreviewView previewView, Placemark placemark)
         {
             _camera = camera;
             _previewView = previewView;
-            _location = location;
+            _placemark = placemark;
         }
 
         public void OnAnimationUpdate(ValueAnimator animation)
@@ -57,24 +57,26 @@ namespace TestLog.Droid.Camera2
                     System.Diagnostics.Debug.WriteLine("Streaming!!!");
 
                     //DrawAction?.Invoke(_location);
-                    var firstLabel = CreateTextView($"Latitude: {_location?.Latitude} | Longitude: {_location?.Longitude}");
-                    var secondLabel = CreateTextView(_location?.Address);
+                    var firstLabel = CreateTextView($"Latitude: {_placemark?.Location?.Latitude}");
+                    var secondLabel = CreateTextView($"Longitude: {_placemark?.Location?.Longitude}");
+                    var thirdLabel = CreateTextView(_placemark.CountryName);
                     LinearLayout linearLayout = new LinearLayout(MainActivity.Instance);
                     linearLayout.LayoutParameters = new LayoutParams(LayoutParams.MatchParent, LayoutParams.MatchParent);
                     linearLayout.AddView(firstLabel);
                     linearLayout.AddView(secondLabel);
+                    linearLayout.AddView(thirdLabel);
                     linearLayout.Orientation = Orientation.Vertical;
-                    linearLayout.SetGravity(GravityFlags.Bottom);
-                    linearLayout.SetPadding(0, 0, 0, 150);
+                    linearLayout.SetGravity(GravityFlags.Right);
+                    linearLayout.SetPadding(0, 400, 5, 0);
 
                     _previewView?.AddView(linearLayout);
                 }
             }
         }
 
-        public void DrawSomething(Location location)
+        public void DrawSomething(Placemark placemark)
         {
-            _location = location;
+            _placemark = placemark;
         }
 
         private TextView CreateTextView(string text)
@@ -82,7 +84,7 @@ namespace TestLog.Droid.Camera2
             var x = new TextView(MainActivity.Instance);
             x.Text = text;
             System.Diagnostics.Debug.WriteLine("Current Location: " + x.Text);
-            x.SetTextColor(Color.Blue);
+            x.SetTextColor(Color.White);
             //x.Gravity = Android.Views.GravityFlags.Bottom;
             return x;
         }

@@ -47,9 +47,9 @@ namespace TestLog.Camera2
             declaringType: typeof(CameraPreview),
             defaultValue: default(MediaOptions));
 
-        public static readonly BindableProperty LocationProperty = BindableProperty.Create(
-            propertyName: nameof(Location),
-            returnType: typeof(Location),
+        public static readonly BindableProperty PlacemarkProperty = BindableProperty.Create(
+            propertyName: nameof(Placemark),
+            returnType: typeof(Placemark),
             declaringType: typeof(CameraPreview),
             defaultValue: null);
 
@@ -77,10 +77,10 @@ namespace TestLog.Camera2
             set { SetValue(MediaOptionsProperty, value); }
         }
 
-        public Location Location
+        public Placemark Placemark
         {
-            get { return (Location)GetValue(LocationProperty); }
-            set { SetValue(LocationProperty, value); }
+            get { return (Placemark)GetValue(PlacemarkProperty); }
+            set { SetValue(PlacemarkProperty, value); }
         }
 
         public Command CameraClick

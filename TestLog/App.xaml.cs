@@ -11,7 +11,8 @@ namespace TestLog
         {
             InitializeComponent();
 
-            MainPage = new NavigationPage(new PageA());
+            //MainPage = new NavigationPage(new PageA());
+            MainPage = new MainPage();
         }
 
         public class PageA : ContentPage

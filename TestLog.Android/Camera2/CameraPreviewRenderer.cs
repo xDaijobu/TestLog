@@ -58,7 +58,7 @@ namespace TestLog.Droid.Camera2
             }
         }
         MediaOptions mediaOptions;
-        Location location;
+        Placemark placeMark;
         #endregion
         private CameraPreview _currentElement;
         private readonly Context _context;
@@ -76,13 +76,13 @@ namespace TestLog.Droid.Camera2
             var previewView = new PreviewView(_context);
             UpdateCameraOptions(Element.CameraOptions);
             mediaOptions = Element.MediaOptions;
-            location = Element.Location;
+            placeMark = Element.Placemark;
 
             cameraExecutor = Executors.NewSingleThreadExecutor();
             Connect();
 
             // Callback for preview visibility
-            previewObserver = new PreviewObserver(camera, previewView, location);
+            previewObserver = new PreviewObserver(camera, previewView, placeMark);
             previewView.PreviewStreamState.Observe(lifecycleOwner, previewObserver);
 
             return previewView;
@@ -117,12 +117,12 @@ namespace TestLog.Droid.Camera2
             if (e.PropertyName == nameof(CameraPreview.MediaOptions))
                 mediaOptions = Element.MediaOptions;
 
-            if (e.PropertyName == nameof(CameraPreview.Location))
+            if (e.PropertyName == nameof(CameraPreview.Placemark))
             {
-                location = Element.Location;
-                System.Diagnostics.Debug.WriteLine("Lat: " + location.Latitude);
-                System.Diagnostics.Debug.WriteLine("Lon: " + location.Longitude);
-                previewObserver?.DrawAction(location);
+                placeMark = Element.Placemark;
+                System.Diagnostics.Debug.WriteLine("Lat: " + placeMark?.Location?.Latitude);
+                System.Diagnostics.Debug.WriteLine("Lon: " + placeMark?.Location?.Longitude);
+                previewObserver?.DrawAction(placeMark);
             }
         }
 
