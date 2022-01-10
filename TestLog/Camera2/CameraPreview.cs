@@ -41,6 +41,12 @@ namespace TestLog.Camera2
             declaringType: typeof(CameraPreview),
             defaultValue: string.Empty);
 
+        public static readonly BindableProperty MediaOptionsProperty = BindableProperty.Create(
+            propertyName: nameof(MediaOptions),
+            returnType: typeof(MediaOptions),
+            declaringType: typeof(CameraPreview),
+            defaultValue: default(MediaOptions));
+
         public CameraOptions CameraOptions
         {
             get { return (CameraOptions)GetValue(CameraOptionsProperty); }
@@ -57,6 +63,12 @@ namespace TestLog.Camera2
         {
             get { return (string)GetValue(DirectoryProperty); }
             set { SetValue(DirectoryProperty, value); }
+        }
+
+        public MediaOptions MediaOptions
+        {
+            get { return (MediaOptions)GetValue(MediaOptionsProperty); }
+            set { SetValue(MediaOptionsProperty, value); }
         }
 
         public Command CameraClick

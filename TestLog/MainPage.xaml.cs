@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Text;
+using System.Threading.Tasks;
 using Xamarin.Forms;
 
 namespace TestLog
@@ -11,8 +12,6 @@ namespace TestLog
         public MainPage()
         {
             InitializeComponent();
-
-            //ToLogger.Warn("TEST", "asd");
         }
 
         protected override void OnAppearing()
@@ -24,36 +23,48 @@ namespace TestLog
                 Debug.WriteLine("Data: " + args.ImageData);
                 Debug.WriteLine("Path: " + args.Path);
 
-                image.Source = ImageSource.FromFile(args.Path);
+                Device.BeginInvokeOnMainThread(() =>
+                {
+                    image.Source = ImageSource.FromFile(args.Path);
+                    SetEnabledButtons(true);
+                });
+            };
+            cameraPreview.MediaOptions = new Camera2.MediaOptions()
+            {
+                //SaveToAlbum =
+                CompressionQuality = 50,
+                PhotoSize = Camera2.PhotoSize.Small,
+                MaxWidthHeight = 2000,
             };
         }
 
-        public static string FlattenException(Exception exception)
-        {
-            var stringBuilder = new StringBuilder();
-
-            while (exception != null)
-            {
-                stringBuilder.AppendLine(exception.Message);
-                stringBuilder.AppendLine(exception.StackTrace);
-
-                exception = exception.InnerException;
-            }
-
-            return stringBuilder.ToString();
-        }
+        protected override bool OnBackButtonPressed()
+            => true;
 
         void Button_Clicked(object sender, EventArgs e)
         {
+            SetEnabledButtons(false);
             cameraPreview.CameraClick.Execute(null);
+        }
+
+        void SetEnabledButtons(bool isEnabled)
+        {
+            btnTakePhoto.IsEnabled = isEnabled;
+            btnFlash.IsEnabled = isEnabled;
+            btnClose.IsEnabled = isEnabled;
+            btnSwitchCam.IsEnabled = isEnabled;            
         }
 
         async void Button_Clicked_1(object sender, EventArgs e)
         {
+            SetEnabledButtons(false);
             if (cameraPreview.CameraOptions == Camera2.CameraOptions.Rear)
                 cameraPreview.CameraOptions = Camera2.CameraOptions.Front;
             else
                 cameraPreview.CameraOptions = Camera2.CameraOptions.Rear;
+
+            await Task.Delay(1000);
+            SetEnabledButtons(true);
         }
 
         void Button_Clicked_2(object sender, EventArgs e)
@@ -70,7 +81,7 @@ namespace TestLog
             }   
         }
 
-        void Button_Clicked_3(System.Object sender, System.EventArgs e)
+        void Button_Clicked_3(object sender, EventArgs e)
         {
             Navigation.PopModalAsync();
         }

@@ -61,6 +61,7 @@ namespace TestLog.Droid.Camera2
                 return _context is ILifecycleOwner _lifecycleOwner ? _lifecycleOwner : _context.GetActivity() as ILifecycleOwner;
             }
         }
+        MediaOptions mediaOptions;
 
         #endregion
         private CameraPreview _currentElement;
@@ -78,7 +79,7 @@ namespace TestLog.Droid.Camera2
 
             var previewView = new PreviewView(_context);
             UpdateCameraOptions(Element.CameraOptions);
-
+            mediaOptions = Element.MediaOptions;
             //previewView.SetImplementationMode(PreviewView.ImplementationMode.Performance);
             //var textView = new TextView(MainActivity.Instance);
             //textView.Text = "hayyyy HAYY HELLLLOO OWORLDD";
@@ -123,6 +124,9 @@ namespace TestLog.Droid.Camera2
 
             if (e.PropertyName == nameof(CameraPreview.Directory))
                 directory = Element.Directory;
+
+            if (e.PropertyName == nameof(CameraPreview.MediaOptions))
+                mediaOptions = Element.MediaOptions;
         }
 
         public async Task<bool> CheckPermissions()
@@ -167,9 +171,10 @@ namespace TestLog.Droid.Camera2
 
                     UpdateCamera();
 
-                    _currentElement.CameraClick = new Command(() =>
+                    _currentElement.CameraClick = new Command(async () =>
                     {
-                        TakePicture();
+                        var result = await TakePicture();
+                        System.Diagnostics.Debug.WriteLine("Result TakePicture: " + result + " | " + DateTime.Now);
                     });
                 }
                 catch (Exception ex)
@@ -190,22 +195,15 @@ namespace TestLog.Droid.Camera2
             stream.Close();
         }
 
-        private void TakePicture()
+        private async Task<bool> TakePicture()
         {
-            //var bitmap = previewView.Bitmap;
-            //System.Diagnostics.Debug.WriteLine("" +
-            //    "Camera Clicked\n" +
-            //    $"Height: {bitmap.Height}\n" +
-            //    $"Width: {bitmap.Width}");
-
-            //System.Diagnostics.Debug.WriteLine("export bitmap as png.");
-            //ExportBitmapAsPNG(bitmap);
+            var completionSource = new TaskCompletionSource<bool>();
 
             // Get a stable reference of the modifiable image capture use case   
             var imageCapture = this.imageCapture;
             imageCapture.TargetRotation = 0;
             if (imageCapture == null)
-                return;
+                return false;
             //// Create time-stamped output file to hold the image
             //var photoFile = new File(outputDirectory, new Java.Text.SimpleDateFormat(FILENAME_FORMAT, Locale.Us).Format(JavaSystem.CurrentTimeMillis()) + ".jpg");
 
@@ -216,6 +214,7 @@ namespace TestLog.Droid.Camera2
 
             #region Versi 1: This method provides an in-memory buffer of the captured image.
             imageCapture.TakePicture(ContextCompat.GetMainExecutor(_context), new ImageCapturedCallback(
+                completionSource,
                 onErrorCallback: (exc) =>
                 {
                     var msg = $"Photo capture failed: {exc.Message}";
@@ -228,10 +227,13 @@ namespace TestLog.Droid.Camera2
                         }
                     }
 
+                    _currentElement?.RaiseMediaCaptured(new MediaCapturedEventArgs(imageData: null, path: null));
                     Log.Error(TAG, msg, exc);
                     Toast.MakeText(_context, msg, ToastLength.Short).Show();
+
+                    completionSource.TrySetException(exc);
                 },
-                onCapturedSuccessCallback: (imageProxy) =>
+                onCapturedSuccessCallback: async (imageProxy) =>
                 {
                     string path = $"{outputDirectory}/{new Java.Text.SimpleDateFormat(FILENAME_FORMAT, Locale.Us).Format(JavaSystem.CurrentTimeMillis())}{".jpg"}";
 
@@ -241,20 +243,28 @@ namespace TestLog.Droid.Camera2
 
                     /* imageproxy to bitmap */
                     var data = ImageUtil.ImageToJpegByteArray(imageProxy);
-                    var imageBitmap = BitmapFactory.DecodeByteArray(data, 0, data.Length);
-
-                    var finalBitmap = RotateBitmap(imageBitmap, correctOrientation);
+                    System.Diagnostics.Debug.WriteLine("ImageProxy To Byte ~ " + DateTime.Now);
                     imageProxy.Close();
+                    var imageBitmap = BitmapFactory.DecodeByteArray(data, 0, data.Length);
+                    await FixOrientationAndResizeAsync(mediaOptions, imageBitmap, correctOrientation, path);
 
-                    using (FileStream os = new FileStream(path, FileMode.Create))
-                    {
-                        finalBitmap.Compress(Bitmap.CompressFormat.Png, 100, os);
-                        os.Close();
-                    }
+                    //System.Diagnostics.Debug.WriteLine("Array to Bitmap ~ " + DateTime.Now);
+                    //var finalBitmap = RotateBitmap(imageBitmap, correctOrientation);
+                    //System.Diagnostics.Debug.WriteLine("Rotate Bitmap ~ " + DateTime.Now);
+
+                    //using FileStream os = new FileStream(path, FileMode.Create);
+                    //await finalBitmap.CompressAsync(Bitmap.CompressFormat.Png, 100, os);
+                    //System.Diagnostics.Debug.WriteLine("Bitmap Compress ~ " + DateTime.Now);
+                    //os.Close();
 
                     _currentElement?.RaiseMediaCaptured(new MediaCapturedEventArgs(imageData: data, path: path));
+
+                    completionSource.TrySetResult(true);
                 }
                 ));
+
+            var result = await completionSource.Task;
+            return result;
             #endregion
             //#region Versi 2: This method saves the captured image to the provided file location.
             //imageCapture.TakePicture(outputOptions, ContextCompat.GetMainExecutor(_context), new ImageSaveCallback(
@@ -451,7 +461,154 @@ namespace TestLog.Droid.Camera2
         {
             Matrix matrix = new Matrix();
             matrix.PostRotate(angle);
-            return Bitmap.CreateBitmap(source, 0, 0, source.Width, source.Height, matrix, true);
+
+            Bitmap rotatedImage = Bitmap.CreateBitmap(source, 0, 0, source.Width, source.Height, matrix, true);
+            source.Recycle();
+
+            return rotatedImage;
+        }
+
+        // nyontek dari https://github.com/jamesmontemagno/MediaPlugin/blob/master/src/Media.Plugin/Android/MediaImplementation.cs#L652-L793
+        // ngga 100% sama
+        public Task<bool> FixOrientationAndResizeAsync(MediaOptions options, Bitmap originalImage, int rotation, string outputPath)
+        {
+            if (originalImage == null)
+                return Task.FromResult(false);
+            try
+            {
+                return Task.Run(() =>
+                {
+                    try
+                    {
+                        // if we don't need to rotate, aren't resizing, and aren't adjusting quality then simply return
+                        if (rotation == 0 && mediaOptions.PhotoSize == PhotoSize.Full && mediaOptions.CompressionQuality == 100)
+                            return false;
+
+                        var percent = 1.0f;
+                        switch (mediaOptions.PhotoSize)
+                        {
+                            case PhotoSize.Large:
+                                percent = .75f;
+                                break;
+                            case PhotoSize.Medium:
+                                percent = .5f;
+                                break;
+                            case PhotoSize.Small:
+                                percent = .25f;
+                                break;
+                            case PhotoSize.Custom:
+                                percent = (float)mediaOptions.CustomPhotoSize / 100f;
+                                break;
+                        }
+
+                        if (mediaOptions.PhotoSize == PhotoSize.MaxWidthHeight && mediaOptions.MaxWidthHeight.HasValue)
+                        {
+                            var max = Math.Max(originalImage.Width, originalImage.Height);
+                            if (max > mediaOptions.MaxWidthHeight)
+                            {
+                                percent = (float)mediaOptions.MaxWidthHeight / (float)max;
+                            }
+                        }
+
+                        var finalWidth = (int)(originalImage.Width * percent);
+                        var finalHeight = (int)(originalImage.Height * percent);
+                        
+                        if (originalImage == null)
+                            return false;
+
+                        if (finalWidth != originalImage.Width || finalHeight != originalImage.Height)
+                        {
+                            originalImage = Bitmap.CreateScaledBitmap(originalImage, finalWidth, finalHeight, true);
+                        }
+
+                        //if (rotation % 180 == 90)
+                        //{
+                        //    var a = finalWidth;
+                        //    finalWidth = finalHeight;
+                        //    finalHeight = a;
+                        //}
+
+                        //set scaled and rotated image dimensions
+                        //exif?.SetAttribute(pixelXDimens, Java.Lang.Integer.ToString(finalWidth));
+                        //exif?.SetAttribute(pixelYDimens, Java.Lang.Integer.ToString(finalHeight));
+
+                        //if we need to rotate then go for it.
+                        //then compresse it if needed
+                        //var photoType = System.IO.Path.GetExtension(filePath)?.ToLower();
+                        //var compressFormat = photoType == ".png" ? Bitmap.CompressFormat.Png : Bitmap.CompressFormat.Jpeg;
+                        var compressFormat = Bitmap.CompressFormat.Jpeg;
+                        if (rotation != 0)
+                        {
+                            var matrix = new Matrix();
+                            matrix.PostRotate(rotation);
+                            using (var rotatedImage = Bitmap.CreateBitmap(originalImage, 0, 0, originalImage.Width, originalImage.Height, matrix, true))
+                            {
+                                using FileStream stream = new FileStream(outputPath, FileMode.Create);
+                                rotatedImage.Compress(compressFormat, mediaOptions.CompressionQuality, stream);
+                                rotatedImage.Recycle();
+                            }
+                            //change the orienation to "not rotated"
+                            //exif?.SetAttribute(ExifInterface.TagOrientation, Java.Lang.Integer.ToString((int)Orientation.Normal));
+
+                        }
+                        else
+                        {
+                            //always need to compress to save back to disk
+                            using FileStream stream = new FileStream(outputPath, FileMode.Create);
+                            originalImage.Compress(compressFormat, mediaOptions.CompressionQuality, stream);
+                        }
+
+                        originalImage.Recycle();
+                        originalImage.Dispose();
+                        // Dispose of the Java side bitmap.
+                        GC.Collect();
+                        return true;
+
+                    }
+                    catch (Exception ex)
+                    {
+#if DEBUG
+                        throw ex;
+#else
+                        return false;
+#endif
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+#if DEBUG
+                throw ex;
+#else
+                return Task.FromResult(false);
+#endif
+            }
+        }
+
+        // nyontek dari https://github.com/jamesmontemagno/MediaPlugin/blob/master/src/Media.Plugin/Android/MediaImplementation.cs#L795-L818
+        int CalculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight)
+        {
+            // Raw height and width of image
+            var height = options.OutHeight;
+            var width = options.OutWidth;
+            var inSampleSize = 1;
+
+            if (height > reqHeight || width > reqWidth)
+            {
+
+                var halfHeight = height / 2;
+                var halfWidth = width / 2;
+
+                // Calculate the largest inSampleSize value that is a power of 2 and keeps both
+                // height and width larger than the requested height and width.
+                while ((halfHeight / inSampleSize) >= reqHeight
+                        && (halfWidth / inSampleSize) >= reqWidth)
+                {
+                    inSampleSize *= 2;
+                }
+            }
+
+            return inSampleSize;
         }
     }
 }

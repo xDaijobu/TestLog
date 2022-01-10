@@ -43,20 +43,20 @@ namespace TestLog.Droid.Camera2
                 System.Diagnostics.Debug.WriteLine(currentState);
                 if (currentState == PreviewView.StreamState.Idle)
                 {
-                    //Bitmap currentView = BlurRenderScript(_previewView.Bitmap, 10);
-                    //_previewView.SetBackgroundColor(Android.Graphics.Color.Red);
-                    //_previewView.Background = new BitmapDrawable(Resources, currentView);w
+                    ////Bitmap currentView = BlurRenderScript(_previewView.Bitmap, 10);
+                    ////_previewView.SetBackgroundColor(Android.Graphics.Color.Red);
+                    ////_previewView.Background = new BitmapDrawable(Resources, currentView);w
 
-                    // Initializing the animator with values to zoom - min:0f - max:1f
-                    ValueAnimator animator = OfFloat(0.1f, 0.2f, 0.3f, 0.4f, 0.5f);
+                    //// Initializing the animator with values to zoom - min:0f - max:1f
+                    //ValueAnimator animator = OfFloat(0.1f, 0.2f, 0.3f, 0.4f, 0.5f);
 
-                    // Setting animation duration
-                    animator.SetDuration(200);
+                    //// Setting animation duration
+                    //animator.SetDuration(200);
 
-                    // Adding listener for every value update of the animation
-                    animator.AddUpdateListener(this);
-                    // Start the zoom animation
-                    animator.Start();
+                    //// Adding listener for every value update of the animation
+                    //animator.AddUpdateListener(this);
+                    //// Start the zoom animation
+                    //animator.Start();
                 }
                 else if (currentState == PreviewView.StreamState.Streaming)
                 {

@@ -27,7 +27,7 @@ namespace TestLog
 
                 _ = Task.Run(async () =>
                 {
-                    await Task.Delay(5000);
+                    await Task.Delay(2000);
 
                     Device.BeginInvokeOnMainThread(async () =>
                     {

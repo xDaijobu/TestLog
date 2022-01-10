@@ -15,6 +15,7 @@
             Orientation="Horizontal"
             VerticalOptions="StartAndExpand">
             <Button
+                x:Name="btnClose"
                 Clicked="Button_Clicked_3"
                 HorizontalOptions="StartAndExpand"
                 Text="Close" />
@@ -38,11 +39,13 @@
                 VerticalOptions="CenterAndExpand"
                 WidthRequest="50" />
             <Button
+                x:Name="btnTakePhoto"
                 Clicked="Button_Clicked"
                 HorizontalOptions="CenterAndExpand"
                 Text="Take Photo"
                 VerticalOptions="CenterAndExpand" />
             <Button
+                x:Name="btnSwitchCam"
                 Clicked="Button_Clicked_1"
                 HorizontalOptions="EndAndExpand"
                 Text="Switch Cam"
