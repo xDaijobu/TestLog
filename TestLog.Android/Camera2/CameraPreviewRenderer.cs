@@ -408,7 +408,7 @@ namespace TestLog.Droid.Camera2
             cameraSelector?.Dispose();
             cameraProvider?.Dispose();
             camera?.Dispose();
-            previewObserver?.Dispose();
+            //previewObserver?.Dispose();
 
             base.Dispose(disposing);
         }
