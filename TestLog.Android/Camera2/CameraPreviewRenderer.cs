@@ -130,8 +130,8 @@ namespace TestLog.Droid.Camera2
         public async Task<bool> CheckPermissions()
         {
             return
-                (await Xamarin.Essentials.Permissions.RequestAsync<Xamarin.Essentials.Permissions.Camera>()) == Xamarin.Essentials.PermissionStatus.Granted ||
-                (await Xamarin.Essentials.Permissions.RequestAsync<Xamarin.Essentials.Permissions.StorageRead>()) == Xamarin.Essentials.PermissionStatus.Granted ||
+                (await Xamarin.Essentials.Permissions.RequestAsync<Xamarin.Essentials.Permissions.Camera>()) == Xamarin.Essentials.PermissionStatus.Granted &&
+                (await Xamarin.Essentials.Permissions.RequestAsync<Xamarin.Essentials.Permissions.StorageRead>()) == Xamarin.Essentials.PermissionStatus.Granted &&
                 (await Xamarin.Essentials.Permissions.RequestAsync<Xamarin.Essentials.Permissions.StorageWrite>()) == Xamarin.Essentials.PermissionStatus.Granted;
         }
 
@@ -448,12 +448,6 @@ namespace TestLog.Droid.Camera2
                 {
                     try
                     {
-                        // if we don't need to rotate, aren't resizing, and aren't adjusting quality then simply return
-                        if (rotation == 0
-                            && mediaOptions.PhotoSize == PhotoSize.Full
-                            && mediaOptions.CompressionQuality == 100)
-                            return false;
-
                         var percent = 1.0f;
                         switch (mediaOptions.PhotoSize)
                         {

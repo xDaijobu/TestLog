@@ -44,8 +44,8 @@ namespace TestLog
             cameraPreview.MediaOptions = new Camera2.MediaOptions()
             {
                 //SaveToAlbum =
-                CompressionQuality = 100,
-                PhotoSize = Camera2.PhotoSize.Full,
+                CompressionQuality = 50, /*SATO SAMA HRTO PAKAINYA 50*/
+                PhotoSize = Camera2.PhotoSize.Small,
                 MaxWidthHeight = 2000,
             };
 
