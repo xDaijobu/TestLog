@@ -79,6 +79,7 @@
     <Compile Include="Camera2\FocusTouchListener.cs" />
     <Compile Include="Camera2\ZoomAndFocusTouchListener.cs" />
     <Compile Include="Camera2\PreviewObserver.cs" />
+    <Compile Include="Camera2\DrawView.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\AboutResources.txt" />

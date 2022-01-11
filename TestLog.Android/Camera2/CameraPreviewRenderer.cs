@@ -29,6 +29,7 @@ using Environment = Android.OS.Environment;
 using Android.OS;
 using AndroidX.Camera.Core.Internal.Utils;
 using View = Android.Views.View;
+using Rect = Android.Graphics.Rect;
 
 [assembly: ExportRenderer(typeof(CameraPreview), typeof(CameraPreviewRenderer))]
 namespace TestLog.Droid.Camera2
@@ -59,7 +60,7 @@ namespace TestLog.Droid.Camera2
             }
         }
         MediaOptions mediaOptions;
-        Placemark placeMark;
+        Placemark placemark;
         #endregion
         private CameraPreview _currentElement;
         private readonly Context _context;
@@ -77,13 +78,13 @@ namespace TestLog.Droid.Camera2
             var previewView = new PreviewView(_context);
             UpdateCameraOptions(Element.CameraOptions);
             mediaOptions = Element.MediaOptions;
-            placeMark = Element.Placemark;
+            placemark = Element.Placemark;
 
             cameraExecutor = Executors.NewSingleThreadExecutor();
             Connect();
 
             // Callback for preview visibility
-            previewObserver = new PreviewObserver(camera, previewView, placeMark);
+            previewObserver = new PreviewObserver(camera, previewView, placemark);
             previewView.PreviewStreamState.Observe(lifecycleOwner, previewObserver);
             return previewView;
         }
@@ -119,10 +120,10 @@ namespace TestLog.Droid.Camera2
 
             if (e.PropertyName == nameof(CameraPreview.Placemark))
             {
-                placeMark = Element.Placemark;
-                System.Diagnostics.Debug.WriteLine("Lat: " + placeMark?.Location?.Latitude);
-                System.Diagnostics.Debug.WriteLine("Lon: " + placeMark?.Location?.Longitude);
-                previewObserver?.DrawAction(placeMark);
+                placemark = Element.Placemark;
+                System.Diagnostics.Debug.WriteLine("Lat: " + placemark?.Location?.Latitude);
+                System.Diagnostics.Debug.WriteLine("Lon: " + placemark?.Location?.Longitude);
+                previewObserver?.DrawAction(placemark);
             }
         }
 
@@ -435,6 +436,7 @@ namespace TestLog.Droid.Camera2
         {
             if (originalImage == null)
                 return Task.FromResult(false);
+
             try
             {
                 return Task.Run(() =>
@@ -442,7 +444,9 @@ namespace TestLog.Droid.Camera2
                     try
                     {
                         // if we don't need to rotate, aren't resizing, and aren't adjusting quality then simply return
-                        if (rotation == 0 && mediaOptions.PhotoSize == PhotoSize.Full && mediaOptions.CompressionQuality == 100)
+                        if (rotation == 0
+                            && mediaOptions.PhotoSize == PhotoSize.Full
+                            && mediaOptions.CompressionQuality == 100)
                             return false;
 
                         var percent = 1.0f;
@@ -458,69 +462,48 @@ namespace TestLog.Droid.Camera2
                                 percent = .25f;
                                 break;
                             case PhotoSize.Custom:
-                                percent = (float)mediaOptions.CustomPhotoSize / 100f;
+                                percent = mediaOptions.CustomPhotoSize / 100f;
                                 break;
                         }
+
+                        if (originalImage == null)
+                            return false;
 
                         if (mediaOptions.PhotoSize == PhotoSize.MaxWidthHeight && mediaOptions.MaxWidthHeight.HasValue)
                         {
                             var max = Math.Max(originalImage.Width, originalImage.Height);
                             if (max > mediaOptions.MaxWidthHeight)
                             {
-                                percent = (float)mediaOptions.MaxWidthHeight / (float)max;
+                                percent = (float)mediaOptions.MaxWidthHeight / max;
                             }
                         }
 
                         var finalWidth = (int)(originalImage.Width * percent);
                         var finalHeight = (int)(originalImage.Height * percent);
-                        
-                        if (originalImage == null)
-                            return false;
 
+                        // SCALE 
                         if (finalWidth != originalImage.Width || finalHeight != originalImage.Height)
-                        {
                             originalImage = Bitmap.CreateScaledBitmap(originalImage, finalWidth, finalHeight, true);
-                        }
 
-                        //if (rotation % 180 == 90)
-                        //{
-                        //    var a = finalWidth;
-                        //    finalWidth = finalHeight;
-                        //    finalHeight = a;
-                        //}
-
-                        //set scaled and rotated image dimensions
-                        //exif?.SetAttribute(pixelXDimens, Java.Lang.Integer.ToString(finalWidth));
-                        //exif?.SetAttribute(pixelYDimens, Java.Lang.Integer.ToString(finalHeight));
-
-                        //if we need to rotate then go for it.
-                        //then compresse it if needed
-                        //var photoType = System.IO.Path.GetExtension(filePath)?.ToLower();
-                        //var compressFormat = photoType == ".png" ? Bitmap.CompressFormat.Png : Bitmap.CompressFormat.Jpeg;
                         var compressFormat = Bitmap.CompressFormat.Jpeg;
+
+                        // rotate gambar nya klo perlu
                         if (rotation != 0)
                         {
                             var matrix = new Matrix();
                             matrix.PostRotate(rotation);
-                            using (var rotatedImage = Bitmap.CreateBitmap(originalImage, 0, 0, originalImage.Width, originalImage.Height, matrix, true))
-                            {
-                                var finalImage = DrawCustomViewToBitmap(rotatedImage, rotation);
-                                using FileStream stream = new FileStream(outputPath, FileMode.Create);
-                                finalImage.Compress(compressFormat, mediaOptions.CompressionQuality, stream);
-                                finalImage.Recycle();
-
-                                rotatedImage.Recycle();
-                            }
-                            //change the orienation to "not rotated"
-                            //exif?.SetAttribute(ExifInterface.TagOrientation, Java.Lang.Integer.ToString((int)Orientation.Normal));
-
+                            originalImage = Bitmap.CreateBitmap(originalImage, 0, 0, originalImage.Width, originalImage.Height, matrix, true);
                         }
-                        else
-                        {
-                            //always need to compress to save back to disk
-                            using FileStream stream = new FileStream(outputPath, FileMode.Create);
-                            originalImage.Compress(compressFormat, mediaOptions.CompressionQuality, stream);
-                        }
+
+                        // FLIP GAMBAR NYA
+                        originalImage = DoFlipHorizontal(originalImage, rotation);
+
+                        // DRAW Placemark
+                        originalImage = DrawPlacemark(originalImage, placemark);
+
+                        //always need to compress to save back to disk
+                        using FileStream stream = new FileStream(outputPath, FileMode.Create);
+                        originalImage.Compress(compressFormat, mediaOptions.CompressionQuality, stream);
 
                         originalImage.Recycle();
                         originalImage.Dispose();
@@ -549,43 +532,68 @@ namespace TestLog.Droid.Camera2
             }
         }
 
-
-        private Bitmap DrawCustomViewToBitmap(Bitmap originalImage, int rotation)
+        private Bitmap DrawPlacemark(Bitmap originalImage, Placemark placemark)
         {
-            /*get custom View*/
-            var childCount = previewView.ChildCount;
-            var customView = previewView.GetChildAt(childCount - 1);
+            Bitmap mutableBitmap = originalImage.Copy(Bitmap.Config.Argb8888, true);
+            Canvas canvas = new Canvas(mutableBitmap);
 
-            if (Build.VERSION.SdkInt == BuildVersionCodes.LollipopMr1 ||
-                    Build.VERSION.SdkInt == BuildVersionCodes.Lollipop)
+            string text = $"Latitude: {placemark?.Location?.Latitude}\n" +
+                          $"Longitude: {placemark?.Location?.Longitude}\n" +
+                          $"{placemark?.CountryName}";
+
+            float x = mutableBitmap.Width, y = mutableBitmap.Height / 2;
+            using (Paint paint = new Paint())
             {
-                // reset orientation nya!
-                customView.Rotation = rotation;
+                paint.Color = Android.Graphics.Color.White;
+                paint.AntiAlias = true;
+                paint.TextAlign = Paint.Align.Right;
+
+                // set text size for width
+                float testTextSize = 48f;
+                // Get the bounds of the text, using our testTextSize.
+                paint.TextSize = testTextSize;
+                Rect bounds = new Rect();
+                paint.GetTextBounds(text, 0, text.Length, bounds);
+
+                // Calculate the desired size as a proportion of our testTextSize.
+                float desiredTextSize = testTextSize * originalImage.Width / bounds.Width();
+
+                // Set the paint for that size.
+                System.Diagnostics.Debug.WriteLine("Desired Text Size: " + desiredTextSize);
+                paint.TextSize = desiredTextSize;
+
+                foreach (string line in text.Split("\n"))
+                {
+                    canvas.DrawText(line, (float)(x * 0.99), y, paint);
+                    y += paint.Descent() - paint.Ascent();
+                }
             }
 
+            canvas.Dispose();
+            return mutableBitmap;
+        }
 
-            var customBitmap = LoadBitmapFromView(customView);
-
-            Bitmap resultingBitmap = Bitmap.CreateBitmap(originalImage.Width, originalImage.Height, originalImage.GetConfig());
-
-            Canvas canvas = new Canvas(resultingBitmap);
+        /// <summary>
+        /// Front camera ( mirror ), jdi harus gambar nya harus di flip
+        /// </summary>
+        private Bitmap DoFlipHorizontal(Bitmap originalImage, int rotation)
+        {
+            Bitmap mutableBitmap = originalImage.Copy(Bitmap.Config.Argb8888, true);
+            Canvas canvas = new Canvas(originalImage);
 
             if (rotation > 90)
             {
                 Matrix flipHorizontalMatrix = new Matrix();
                 flipHorizontalMatrix.SetScale(-1, 1);
-                flipHorizontalMatrix.PostTranslate(originalImage.Width, 0);
-                canvas.DrawBitmap(originalImage, flipHorizontalMatrix, null);
+                flipHorizontalMatrix.PostTranslate(mutableBitmap.Width, 0);
+                canvas.DrawBitmap(mutableBitmap, flipHorizontalMatrix, null);
             }
             else
             {
-                canvas.DrawBitmap(originalImage, new Matrix(), null);
+                canvas.DrawBitmap(mutableBitmap, new Matrix(), null);
             }
-            
 
-            canvas.DrawBitmap(customBitmap, (originalImage.Width - customBitmap.Width) / 2, (originalImage.Height - customBitmap.Height) / 2, new Paint());
-
-            originalImage = resultingBitmap;
+            //originalImage = resultingBitmap;
             canvas.Dispose();
             return originalImage;
         }

@@ -1,6 +1,10 @@
 ﻿using System;
 using Android.Animation;
+using Android.Content;
+using Android.Graphics;
 using Android.OS;
+using Android.Text;
+using Android.Util;
 using Android.Views;
 using Android.Widget;
 using AndroidX.Camera.Core;
@@ -55,25 +59,28 @@ namespace TestLog.Droid.Camera2
                 }
                 else if (currentState == PreviewView.StreamState.Streaming)
                 {
-
-                    
-
                     System.Diagnostics.Debug.WriteLine("Streaming!!!");
 
-                    var firstLabel = CreateTextView($"Latitude: {_placemark?.Location?.Latitude}");
-                    var secondLabel = CreateTextView($"Longitude: {_placemark?.Location?.Longitude}");
-                    var thirdLabel = CreateTextView(_placemark.CountryName);
-                    LinearLayout linearLayout = new LinearLayout(MainActivity.Instance);
-                    linearLayout.LayoutParameters = new LayoutParams(LayoutParams.MatchParent, LayoutParams.MatchParent);
-                    linearLayout.AddView(firstLabel);
-                    linearLayout.AddView(secondLabel);
-                    linearLayout.AddView(thirdLabel);
-                    linearLayout.Orientation = Orientation.Vertical;
-                    //linearLayout.SetPadding(0, 500, 5, 0);
-                    //linearLayout.SetGravity(GravityFlags.Right);
-                    linearLayout.SetHorizontalGravity(GravityFlags.End);
-                    linearLayout.SetVerticalGravity(GravityFlags.Center);
-                    
+                    //var firstLabel = CreateTextView($"Latitude: {_placemark?.Location?.Latitude}");
+                    //var secondLabel = CreateTextView($"Longitude: {_placemark?.Location?.Longitude}");
+                    //var thirdLabel = CreateTextView(_placemark.CountryName);
+                    //View drawView = new View(MainActivity.Instance);
+                    //drawView.SetBackgroundColor(Color.Red);
+                    //drawView.LayoutParameters = new LayoutParams(LayoutParams.MatchParent, LayoutParams.MatchParent);
+                    //linearLayout.AddView(firstLabel);
+                    //linearLayout.AddView(secondLabel);
+                    //linearLayout.AddView(thirdLabel);
+                    //linearLayout.Orientation = Orientation.Vertical;
+                    ////linearLayout.SetPadding(0, 500, 5, 0);
+                    ////linearLayout.SetGravity(GravityFlags.Right);
+                    //linearLayout.SetHorizontalGravity(GravityFlags.End);
+                    //linearLayout.SetVerticalGravity(GravityFlags.Center);
+
+                    //Bitmap a = null;
+                    //ImageView imageView = new ImageView(MainActivity.Instance);
+                    //imageView.SetImageBitmap(a);
+
+                   
 
                     /* Hack ~ utk memperbaiki tampilan camera di lollipop */
                     if (Build.VERSION.SdkInt == BuildVersionCodes.LollipopMr1 ||
@@ -81,10 +88,17 @@ namespace TestLog.Droid.Camera2
                     {
                         float targetRotation = 180;
                         _previewView.Rotation = targetRotation;
-                        linearLayout.Rotation = targetRotation;
+                        //canvas.Rotate(targetRotation);
+                        //linearLayout.Rotation = targetRotation;
                     }
-
-                    _previewView?.AddView(linearLayout);
+                    var drawView = new DrawView(MainActivity.Instance, _previewView.Height, _previewView.Width, _placemark);
+                    //drawView.Draw(canvas);
+                    _previewView.AddView(drawView);
+                    //_previewView.Draw(canvas);
+                    //canvas.Restore();
+                    //canvas.Dispose();
+                    //canvas?.Dispose();
+                    //_previewView?.AddView(linearLayout);
                 }
             }
         }
@@ -92,16 +106,6 @@ namespace TestLog.Droid.Camera2
         public void DrawSomething(Placemark placemark)
         {
             _placemark = placemark;
-        }
-
-        private TextView CreateTextView(string text)
-        {
-            var x = new TextView(MainActivity.Instance);
-            x.Text = text;
-            System.Diagnostics.Debug.WriteLine("Current Location: " + x.Text);
-            x.SetTextColor(Color.White);
-            //x.Gravity = Android.Views.GravityFlags.Bottom;
-            return x;
         }
     }
 }
