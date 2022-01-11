@@ -28,6 +28,7 @@ using File = Java.IO.File;
 using Environment = Android.OS.Environment;
 using Android.OS;
 using AndroidX.Camera.Core.Internal.Utils;
+using View = Android.Views.View;
 
 [assembly: ExportRenderer(typeof(CameraPreview), typeof(CameraPreviewRenderer))]
 namespace TestLog.Droid.Camera2
@@ -84,7 +85,6 @@ namespace TestLog.Droid.Camera2
             // Callback for preview visibility
             previewObserver = new PreviewObserver(camera, previewView, placeMark);
             previewView.PreviewStreamState.Observe(lifecycleOwner, previewObserver);
-
             return previewView;
         }
 
@@ -128,9 +128,10 @@ namespace TestLog.Droid.Camera2
 
         public async Task<bool> CheckPermissions()
         {
-            await Xamarin.Essentials.Permissions.RequestAsync<Xamarin.Essentials.Permissions.StorageRead>();
-            await Xamarin.Essentials.Permissions.RequestAsync<Xamarin.Essentials.Permissions.StorageWrite>();
-            return (await Xamarin.Essentials.Permissions.RequestAsync<Xamarin.Essentials.Permissions.Camera>()) == Xamarin.Essentials.PermissionStatus.Granted;
+            return
+                (await Xamarin.Essentials.Permissions.RequestAsync<Xamarin.Essentials.Permissions.Camera>()) == Xamarin.Essentials.PermissionStatus.Granted ||
+                (await Xamarin.Essentials.Permissions.RequestAsync<Xamarin.Essentials.Permissions.StorageRead>()) == Xamarin.Essentials.PermissionStatus.Granted ||
+                (await Xamarin.Essentials.Permissions.RequestAsync<Xamarin.Essentials.Permissions.StorageWrite>()) == Xamarin.Essentials.PermissionStatus.Granted;
         }
 
         public void Connect()
@@ -185,7 +186,6 @@ namespace TestLog.Droid.Camera2
 
             // Get a stable reference of the modifiable image capture use case   
             var imageCapture = this.imageCapture;
-            imageCapture.TargetRotation = 0;
             if (imageCapture == null)
                 return false;
             //// Create time-stamped output file to hold the image
@@ -222,15 +222,22 @@ namespace TestLog.Droid.Camera2
                     string path = $"{outputDirectory}/{new Java.Text.SimpleDateFormat(FILENAME_FORMAT, Locale.Us).Format(JavaSystem.CurrentTimeMillis())}{".jpg"}";
 
                     /* https://developer.android.com/reference/androidx/camera/core/ImageInfo#getRotationDegrees() */
-                    int correctOrientation = imageProxy.ImageInfo.RotationDegrees;
-                    System.Diagnostics.Debug.WriteLine("Correct Rotation: " + correctOrientation);
+                    int correctRotation = imageProxy.ImageInfo.RotationDegrees;
+                    System.Diagnostics.Debug.WriteLine("Correct Rotation: " + correctRotation);
+
+                    if (Build.VERSION.SdkInt == BuildVersionCodes.LollipopMr1 ||
+                        Build.VERSION.SdkInt == BuildVersionCodes.Lollipop)
+                    {
+                        correctRotation = 90;
+                    }
 
                     /* imageproxy to bitmap */
                     var data = ImageUtil.ImageToJpegByteArray(imageProxy);
                     System.Diagnostics.Debug.WriteLine("ImageProxy To Byte ~ " + DateTime.Now);
                     imageProxy.Close();
                     var imageBitmap = BitmapFactory.DecodeByteArray(data, 0, data.Length);
-                    await FixOrientationAndResizeAsync(mediaOptions, imageBitmap, correctOrientation, path);
+
+                    await FixOrientationAndResizeAsync(mediaOptions, imageBitmap, correctRotation, path);
 
                     //System.Diagnostics.Debug.WriteLine("Array to Bitmap ~ " + DateTime.Now);
                     //var finalBitmap = RotateBitmap(imageBitmap, correctOrientation);
@@ -277,6 +284,15 @@ namespace TestLog.Droid.Camera2
             //    }
             //));
             //#endregion
+        }
+
+        public static Bitmap LoadBitmapFromView(View v)
+        {
+            Bitmap b = Bitmap.CreateBitmap(v.Width, v.Height, Bitmap.Config.Argb8888);
+            Canvas c = new Canvas(b);
+            v.Layout(v.Left, v.Top, v.Right, v.Bottom);
+            v.Draw(c);
+            return b;
         }
 
         // Save photos to => /Pictures/CameraX/
@@ -361,7 +377,7 @@ namespace TestLog.Droid.Camera2
                 // The Context here SHOULD be something that's a lifecycle owner
                 if (lifecycleOwner != null)
                     camera = cameraProvider.BindToLifecycle(lifecycleOwner, cameraSelector, imageCapture, cameraPreview);//, imageAnalyzer);
-
+                
                 SetFlash(Element.FlashMode);
 
                 // TODO Cris: bkin opsi hanya bisa di Zoom / Focus / 2 2 nya
@@ -488,8 +504,11 @@ namespace TestLog.Droid.Camera2
                             matrix.PostRotate(rotation);
                             using (var rotatedImage = Bitmap.CreateBitmap(originalImage, 0, 0, originalImage.Width, originalImage.Height, matrix, true))
                             {
+                                var finalImage = DrawCustomViewToBitmap(rotatedImage, rotation);
                                 using FileStream stream = new FileStream(outputPath, FileMode.Create);
-                                rotatedImage.Compress(compressFormat, mediaOptions.CompressionQuality, stream);
+                                finalImage.Compress(compressFormat, mediaOptions.CompressionQuality, stream);
+                                finalImage.Recycle();
+
                                 rotatedImage.Recycle();
                             }
                             //change the orienation to "not rotated"
@@ -528,6 +547,34 @@ namespace TestLog.Droid.Camera2
                 return Task.FromResult(false);
 #endif
             }
+        }
+
+
+        private Bitmap DrawCustomViewToBitmap(Bitmap originalImage, int rotation)
+        {
+            /*get custom View*/
+            var childCount = previewView.ChildCount;
+            var customView = previewView.GetChildAt(childCount - 1);
+
+            if (Build.VERSION.SdkInt == BuildVersionCodes.LollipopMr1 ||
+                    Build.VERSION.SdkInt == BuildVersionCodes.Lollipop)
+            {
+                // reset orientation nya!
+                customView.Rotation = rotation;
+            }
+
+
+            var customBitmap = LoadBitmapFromView(customView);
+
+            Bitmap resultingBitmap = Bitmap.CreateBitmap(originalImage.Width, originalImage.Height, originalImage.GetConfig());
+
+            Canvas canvas = new Canvas(resultingBitmap);
+            canvas.DrawBitmap(originalImage, new Matrix(), null);
+            canvas.DrawBitmap(customBitmap, (originalImage.Width - customBitmap.Width) / 2, (originalImage.Height - customBitmap.Height) / 2, new Paint());
+
+            originalImage = resultingBitmap;
+
+            return originalImage;
         }
 
         // nyontek dari https://github.com/jamesmontemagno/MediaPlugin/blob/master/src/Media.Plugin/Android/MediaImplementation.cs#L795-L818

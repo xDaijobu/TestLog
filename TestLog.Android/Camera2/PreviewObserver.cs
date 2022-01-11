@@ -1,5 +1,6 @@
 ﻿using System;
 using Android.Animation;
+using Android.OS;
 using Android.Views;
 using Android.Widget;
 using AndroidX.Camera.Core;
@@ -54,9 +55,11 @@ namespace TestLog.Droid.Camera2
                 }
                 else if (currentState == PreviewView.StreamState.Streaming)
                 {
+
+                    
+
                     System.Diagnostics.Debug.WriteLine("Streaming!!!");
 
-                    //DrawAction?.Invoke(_location);
                     var firstLabel = CreateTextView($"Latitude: {_placemark?.Location?.Latitude}");
                     var secondLabel = CreateTextView($"Longitude: {_placemark?.Location?.Longitude}");
                     var thirdLabel = CreateTextView(_placemark.CountryName);
@@ -66,8 +69,20 @@ namespace TestLog.Droid.Camera2
                     linearLayout.AddView(secondLabel);
                     linearLayout.AddView(thirdLabel);
                     linearLayout.Orientation = Orientation.Vertical;
-                    linearLayout.SetGravity(GravityFlags.Right);
-                    linearLayout.SetPadding(0, 400, 5, 0);
+                    //linearLayout.SetPadding(0, 500, 5, 0);
+                    //linearLayout.SetGravity(GravityFlags.Right);
+                    linearLayout.SetHorizontalGravity(GravityFlags.End);
+                    linearLayout.SetVerticalGravity(GravityFlags.Center);
+                    
+
+                    /* Hack ~ utk memperbaiki tampilan camera di lollipop */
+                    if (Build.VERSION.SdkInt == BuildVersionCodes.LollipopMr1 ||
+                        Build.VERSION.SdkInt == BuildVersionCodes.Lollipop)
+                    {
+                        float targetRotation = 180;
+                        _previewView.Rotation = targetRotation;
+                        linearLayout.Rotation = targetRotation;
+                    }
 
                     _previewView?.AddView(linearLayout);
                 }
