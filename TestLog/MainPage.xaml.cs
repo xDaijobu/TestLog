@@ -86,6 +86,7 @@ namespace TestLog
             else
                 cameraPreview.CameraOptions = Camera2.CameraOptions.Rear;
 
+            btnSwitchCam.Text = cameraPreview.CameraOptions.ToString();
             await Task.Delay(1000);
             SetEnabledButtons(true);
         }
