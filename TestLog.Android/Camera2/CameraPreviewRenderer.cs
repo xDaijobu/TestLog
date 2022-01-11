@@ -228,7 +228,7 @@ namespace TestLog.Droid.Camera2
                     if (Build.VERSION.SdkInt == BuildVersionCodes.LollipopMr1 ||
                         Build.VERSION.SdkInt == BuildVersionCodes.Lollipop)
                     {
-                        correctRotation = 90;
+                        correctRotation = -90;
                     }
 
                     /* imageproxy to bitmap */
@@ -237,6 +237,7 @@ namespace TestLog.Droid.Camera2
                     imageProxy.Close();
                     var imageBitmap = BitmapFactory.DecodeByteArray(data, 0, data.Length);
 
+                    // harus convert balik ke Byte biar bs dikirim via RaiseMediaCaptured
                     await FixOrientationAndResizeAsync(mediaOptions, imageBitmap, correctRotation, path);
 
                     //System.Diagnostics.Debug.WriteLine("Array to Bitmap ~ " + DateTime.Now);
@@ -441,10 +442,6 @@ namespace TestLog.Droid.Camera2
                 {
                     try
                     {
-                        // if we don't need to rotate, aren't resizing, and aren't adjusting quality then simply return
-                        if (rotation == 0 && mediaOptions.PhotoSize == PhotoSize.Full && mediaOptions.CompressionQuality == 100)
-                            return false;
-
                         var percent = 1.0f;
                         switch (mediaOptions.PhotoSize)
                         {
@@ -470,17 +467,16 @@ namespace TestLog.Droid.Camera2
                                 percent = (float)mediaOptions.MaxWidthHeight / (float)max;
                             }
                         }
-
+                        System.Diagnostics.Debug.WriteLine("ORI W: " + originalImage.Width + " | H: " + originalImage.Height);
                         var finalWidth = (int)(originalImage.Width * percent);
                         var finalHeight = (int)(originalImage.Height * percent);
                         
                         if (originalImage == null)
                             return false;
 
+                        bool isScale = false;
                         if (finalWidth != originalImage.Width || finalHeight != originalImage.Height)
-                        {
-                            originalImage = Bitmap.CreateScaledBitmap(originalImage, finalWidth, finalHeight, true);
-                        }
+                            isScale = true;
 
                         //if (rotation % 180 == 90)
                         //{
@@ -501,25 +497,28 @@ namespace TestLog.Droid.Camera2
                         if (rotation != 0)
                         {
                             var matrix = new Matrix();
+                            
                             matrix.PostRotate(rotation);
                             using (var rotatedImage = Bitmap.CreateBitmap(originalImage, 0, 0, originalImage.Width, originalImage.Height, matrix, true))
                             {
-                                var finalImage = DrawCustomViewToBitmap(rotatedImage, rotation);
+                                var finalImage = DrawCustomViewToBitmap(rotatedImage, rotation, isScale, finalWidth, finalHeight);
                                 using FileStream stream = new FileStream(outputPath, FileMode.Create);
                                 finalImage.Compress(compressFormat, mediaOptions.CompressionQuality, stream);
                                 finalImage.Recycle();
 
                                 rotatedImage.Recycle();
                             }
-                            //change the orienation to "not rotated"
-                            //exif?.SetAttribute(ExifInterface.TagOrientation, Java.Lang.Integer.ToString((int)Orientation.Normal));
-
                         }
                         else
                         {
-                            //always need to compress to save back to disk
-                            using FileStream stream = new FileStream(outputPath, FileMode.Create);
-                            originalImage.Compress(compressFormat, mediaOptions.CompressionQuality, stream);
+                            using (var finalImage = DrawCustomViewToBitmap(originalImage, rotation, isScale, finalWidth, finalHeight))
+                            {
+                                //always need to compress to save back to disk
+                                using FileStream stream = new FileStream(outputPath, FileMode.Create);
+                                finalImage.Compress(compressFormat, mediaOptions.CompressionQuality, stream);
+
+                                finalImage.Recycle();
+                            }
                         }
 
                         originalImage.Recycle();
@@ -550,7 +549,7 @@ namespace TestLog.Droid.Camera2
         }
 
 
-        private Bitmap DrawCustomViewToBitmap(Bitmap originalImage, int rotation)
+        private Bitmap DrawCustomViewToBitmap(Bitmap originalImage, int rotation, bool isScale, int finalWidth, int finalHeight)
         {
             /*get custom View*/
             var childCount = previewView.ChildCount;
@@ -563,17 +562,37 @@ namespace TestLog.Droid.Camera2
                 customView.Rotation = rotation;
             }
 
-
             var customBitmap = LoadBitmapFromView(customView);
 
             Bitmap resultingBitmap = Bitmap.CreateBitmap(originalImage.Width, originalImage.Height, originalImage.GetConfig());
 
+            if (isScale)
+            {
+                resultingBitmap = Bitmap.CreateScaledBitmap(resultingBitmap, finalWidth, finalHeight, true);
+                originalImage = Bitmap.CreateScaledBitmap(originalImage, finalWidth, finalHeight, true);
+            }
+
             Canvas canvas = new Canvas(resultingBitmap);
-            canvas.DrawBitmap(originalImage, new Matrix(), null);
+
+            Matrix flipHorizontalMatrix = new Matrix();
+            flipHorizontalMatrix.SetScale(-1, 1);
+            flipHorizontalMatrix.PostTranslate(originalImage.Width, 0);
+
+            canvas.DrawBitmap(originalImage, flipHorizontalMatrix, null);
+
+            System.Diagnostics.Debug.WriteLine($"" +
+                $"Original\n" +
+                $"Width: {originalImage.Width}\n" +
+                $"Height: {originalImage.Height}\n" +
+                $"Custom Bitmap\n" +
+                $"Width: {customBitmap.Width}\n" +
+                $"Height: {customBitmap.Height}\n");
             canvas.DrawBitmap(customBitmap, (originalImage.Width - customBitmap.Width) / 2, (originalImage.Height - customBitmap.Height) / 2, new Paint());
 
             originalImage = resultingBitmap;
-
+            canvas.Dispose();
+            //resultingBitmap.Recycle();
+            //resultingBitmap.Dispose();
             return originalImage;
         }
 

@@ -64,7 +64,7 @@ namespace TestLog.Droid.Camera2
                     var secondLabel = CreateTextView($"Longitude: {_placemark?.Location?.Longitude}");
                     var thirdLabel = CreateTextView(_placemark.CountryName);
                     LinearLayout linearLayout = new LinearLayout(MainActivity.Instance);
-                    linearLayout.LayoutParameters = new LayoutParams(LayoutParams.MatchParent, LayoutParams.MatchParent);
+                    linearLayout.LayoutParameters = new LayoutParams(LayoutParams.WrapContent, LayoutParams.WrapContent);
                     linearLayout.AddView(firstLabel);
                     linearLayout.AddView(secondLabel);
                     linearLayout.AddView(thirdLabel);
