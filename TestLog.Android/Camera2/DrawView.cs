@@ -40,7 +40,22 @@ namespace TestLog.Droid.Camera2
             paint.AntiAlias = true;
             paint.TextAlign = Paint.Align.Right;
             //paint.SetTypeface(Typeface.DefaultBold);
-            paint.TextSize = 25;
+
+            //paint.TextSize = 25;
+            // set text size for width
+            float testTextSize = 48f;
+            // Get the bounds of the text, using our testTextSize.  
+            paint.TextSize = testTextSize;
+            Rect bounds = new Rect();
+            paint.GetTextBounds(text, 0, text.Length, bounds);
+
+            // Calculate the desired size as a proportion of our testTextSize.
+            float desiredTextSize = testTextSize * _width / bounds.Width();
+
+            // Set the paint for that size.
+            System.Diagnostics.Debug.WriteLine("Desired Text Size: " + desiredTextSize);
+            paint.TextSize = desiredTextSize;
+
             foreach (var line in text.Split("\n"))
             {
                 canvas.DrawText(line, (float)(Width * 0.99), y, paint);

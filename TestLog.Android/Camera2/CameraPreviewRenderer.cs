@@ -226,10 +226,15 @@ namespace TestLog.Droid.Camera2
                     int correctRotation = imageProxy.ImageInfo.RotationDegrees;
                     System.Diagnostics.Debug.WriteLine("Correct Rotation: " + correctRotation);
 
-                    if (Build.VERSION.SdkInt == BuildVersionCodes.LollipopMr1 ||
+                    if ((Build.VERSION.SdkInt == BuildVersionCodes.LollipopMr1 ||
                         Build.VERSION.SdkInt == BuildVersionCodes.Lollipop)
+                        )
                     {
-                        correctRotation = -90;
+                        if (cameraSelector == CameraSelector.DefaultFrontCamera)
+                            correctRotation = -90;
+                        else
+                            correctRotation = 90;
+
                     }
 
                     /* imageproxy to bitmap */
@@ -373,7 +378,7 @@ namespace TestLog.Droid.Camera2
                     cameraSelector = CameraSelector.DefaultBackCamera;
 
                 if (cameraSelector == null)
-                    throw new System.Exception("Camera not found");
+                    throw new Exception("Camera not found");
 
                 // The Context here SHOULD be something that's a lifecycle owner
                 if (lifecycleOwner != null)
@@ -550,7 +555,7 @@ namespace TestLog.Droid.Camera2
 
                 // set text size for width
                 float testTextSize = 48f;
-                // Get the bounds of the text, using our testTextSize.
+                // Get the bounds of the text, using our testTextSize.  
                 paint.TextSize = testTextSize;
                 Rect bounds = new Rect();
                 paint.GetTextBounds(text, 0, text.Length, bounds);
@@ -578,24 +583,22 @@ namespace TestLog.Droid.Camera2
         /// </summary>
         private Bitmap DoFlipHorizontal(Bitmap originalImage, int rotation)
         {
-            Bitmap mutableBitmap = originalImage.Copy(Bitmap.Config.Argb8888, true);
-            Canvas canvas = new Canvas(originalImage);
-
-            if (rotation > 90)
+            if (rotation > 90 || rotation < 0)
             {
+                Bitmap mutableBitmap = originalImage.Copy(Bitmap.Config.Argb8888, true);
+                Canvas canvas = new Canvas(originalImage);
                 Matrix flipHorizontalMatrix = new Matrix();
                 flipHorizontalMatrix.SetScale(-1, 1);
                 flipHorizontalMatrix.PostTranslate(mutableBitmap.Width, 0);
                 canvas.DrawBitmap(mutableBitmap, flipHorizontalMatrix, null);
+                canvas.Dispose();
+
+                return originalImage;
             }
             else
             {
-                canvas.DrawBitmap(mutableBitmap, new Matrix(), null);
+                return originalImage;
             }
-
-            //originalImage = resultingBitmap;
-            canvas.Dispose();
-            return originalImage;
         }
 
         // nyontek dari https://github.com/jamesmontemagno/MediaPlugin/blob/master/src/Media.Plugin/Android/MediaImplementation.cs#L795-L818

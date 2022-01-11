@@ -12,12 +12,23 @@ namespace TestLog
         public MainPage()
         {
             InitializeComponent();
+
+            TapGestureRecognizer tapGestureRecognizer = new TapGestureRecognizer();
+            tapGestureRecognizer.Tapped += async (s, e) =>
+            {
+                if (image.Source is null)
+                    return;
+
+                await Navigation.PushAsync(new ImageView(image.Source));
+            };
+            image.GestureRecognizers.Add(tapGestureRecognizer);
         }
 
         protected override void OnAppearing()
         {
             base.OnAppearing();
-            
+
+
             cameraPreview.MediaCaptured += (s, args) =>
             {
                 Debug.WriteLine("Data: " + args.ImageData);
@@ -26,14 +37,15 @@ namespace TestLog
                 Device.BeginInvokeOnMainThread(() =>
                 {
                     image.Source = ImageSource.FromFile(args.Path);
+                    
                     SetEnabledButtons(true);
                 });
             };
             cameraPreview.MediaOptions = new Camera2.MediaOptions()
             {
                 //SaveToAlbum =
-                CompressionQuality = 50,
-                PhotoSize = Camera2.PhotoSize.Small,
+                CompressionQuality = 100,
+                PhotoSize = Camera2.PhotoSize.Full,
                 MaxWidthHeight = 2000,
             };
 
