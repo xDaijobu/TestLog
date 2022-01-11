@@ -228,7 +228,7 @@ namespace TestLog.Droid.Camera2
                     if (Build.VERSION.SdkInt == BuildVersionCodes.LollipopMr1 ||
                         Build.VERSION.SdkInt == BuildVersionCodes.Lollipop)
                     {
-                        correctRotation = 90;
+                        correctRotation = -90;
                     }
 
                     /* imageproxy to bitmap */
@@ -569,11 +569,24 @@ namespace TestLog.Droid.Camera2
             Bitmap resultingBitmap = Bitmap.CreateBitmap(originalImage.Width, originalImage.Height, originalImage.GetConfig());
 
             Canvas canvas = new Canvas(resultingBitmap);
-            canvas.DrawBitmap(originalImage, new Matrix(), null);
+
+            if (rotation > 90)
+            {
+                Matrix flipHorizontalMatrix = new Matrix();
+                flipHorizontalMatrix.SetScale(-1, 1);
+                flipHorizontalMatrix.PostTranslate(originalImage.Width, 0);
+                canvas.DrawBitmap(originalImage, flipHorizontalMatrix, null);
+            }
+            else
+            {
+                canvas.DrawBitmap(originalImage, new Matrix(), null);
+            }
+            
+
             canvas.DrawBitmap(customBitmap, (originalImage.Width - customBitmap.Width) / 2, (originalImage.Height - customBitmap.Height) / 2, new Paint());
 
             originalImage = resultingBitmap;
-
+            canvas.Dispose();
             return originalImage;
         }
 
