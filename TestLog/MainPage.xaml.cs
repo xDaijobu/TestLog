@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Xamarin.Essentials;
 using Xamarin.Forms;
 
 namespace TestLog
@@ -24,15 +26,16 @@ namespace TestLog
             image.GestureRecognizers.Add(tapGestureRecognizer);
         }
 
-        protected override void OnAppearing()
+        protected override async void OnAppearing()
         {
             base.OnAppearing();
 
             cameraPreview.MediaOptions = new Camera2.MediaOptions()
             {
                 //SaveToAlbum =
-                CompressionQuality = 50, /*SATO SAMA HRTO PAKAINYA 50*/
-                PhotoSize = Camera2.PhotoSize.Small,
+                CompressionQuality = 75, /*SATO SAMA HRTO PAKAINYA 50*/
+                PhotoSize = Camera2.PhotoSize.Medium,
+
                 MaxWidthHeight = 2000,
                 Placemark = new Camera2.Placemark()
                 {
@@ -45,6 +48,36 @@ namespace TestLog
                     SubAdminArea = "Testing",
                 }
             };
+
+
+            //await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+            //var location = await Geolocation.GetLocationAsync();
+
+            //var placemarks = await Geocoding.GetPlacemarksAsync(location);
+
+            //var placemark = placemarks.FirstOrDefault();
+            //Debug.WriteLine(placemark.ToString());
+            /*
+                Contoh isi dari Placemark
+                Location: Latitude: -6.1649888,
+                Longitude: 106.9142543,
+                Altitude: , Accuracy: ,
+                VerticalAccuracy: ,
+                Speed: ,
+                Course: ,
+                Timestamp: 1 / 12 / 2022 8:48:09 AM + 00:00,
+                CountryCode: ID, C
+                ountryName: Indonesia,
+                FeatureName: 5,
+                PostalCode: 14250,
+                SubLocality: Pegangsaan Dua,
+                Thoroughfare: ,
+                SubThoroughfare: ,
+                Locality: Kecamatan Kelapa Gading,
+                AdminArea: Daerah Khusus Ibukota Jakarta,
+                SubAdminArea: Kota Jakarta Utara
+            */
+
         }
 
         protected override bool OnBackButtonPressed()

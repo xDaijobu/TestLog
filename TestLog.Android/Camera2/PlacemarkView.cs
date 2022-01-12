@@ -33,6 +33,7 @@ namespace TestLog.Droid.Camera2
             string text = $"Latitude: {_placemark?.Location?.Latitude}\n" +
                           $"Longitude: {_placemark?.Location?.Longitude}\n" +
                           $"{_placemark?.CountryName}";
+
             float x = Width / 2, y = Height / 2;
             Paint paint = new Paint();
             paint.Color = Color.White;

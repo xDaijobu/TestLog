@@ -10,7 +10,6 @@ using AndroidX.Camera.Lifecycle;
 using AndroidX.Camera.View;
 using AndroidX.Core.Content;
 using Android.Widget;
-using Android.Graphics.Drawables;
 using Android.Views;
 using Java.Lang;
 using Java.Util;
@@ -28,7 +27,6 @@ using File = Java.IO.File;
 using Environment = Android.OS.Environment;
 using Android.OS;
 using AndroidX.Camera.Core.Internal.Utils;
-using View = Android.Views.View;
 using Rect = Android.Graphics.Rect;
 using Android.Content.PM;
 
@@ -43,7 +41,7 @@ namespace TestLog.Droid.Camera2
         private const string TAG = nameof(CameraPreviewRenderer);
         private const string FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS";
 
-        string appName
+        string AppName
         {
             get
             {
@@ -70,7 +68,6 @@ namespace TestLog.Droid.Camera2
             }
         }
         MediaOptions mediaOptions;
-        Placemark placemark;
         #endregion
         private CameraPreview _currentElement;
         private readonly Context _context;
@@ -88,13 +85,12 @@ namespace TestLog.Droid.Camera2
             var previewView = new PreviewView(_context);
             UpdateCameraOptions(Element.CameraOptions);
             mediaOptions = Element.MediaOptions;
-            placemark = mediaOptions?.Placemark;
             outputDirectory = GetOutputDirectory();
             cameraExecutor = Executors.NewSingleThreadExecutor();
             Connect();
 
             // Callback for preview visibility
-            previewObserver = new PreviewObserver(camera, previewView, placemark);
+            previewObserver = new PreviewObserver(camera, previewView, mediaOptions?.Placemark);
             previewView.PreviewStreamState.Observe(lifecycleOwner, previewObserver);
             return previewView;
         }
@@ -124,8 +120,7 @@ namespace TestLog.Droid.Camera2
             if (e.PropertyName == nameof(CameraPreview.MediaOptions))
             {
                 mediaOptions = Element.MediaOptions;
-                placemark = mediaOptions?.Placemark;
-                previewObserver?.UpdatePlacemark(placemark);
+                previewObserver?.UpdatePlacemark(mediaOptions?.Placemark);
             }
         }
 
@@ -212,12 +207,8 @@ namespace TestLog.Droid.Camera2
 
                     System.Diagnostics.Debug.WriteLine("Correct Rotation: " + correctRotation);
 
-                    if ((Build.VERSION.SdkInt == BuildVersionCodes.LollipopMr1 ||
-                        Build.VERSION.SdkInt == BuildVersionCodes.Lollipop)
-                        )
-                    {
+                    if (Build.VERSION.SdkInt == BuildVersionCodes.LollipopMr1 || Build.VERSION.SdkInt == BuildVersionCodes.Lollipop)
                         correctRotation = cameraSelector == CameraSelector.DefaultFrontCamera ? -90 : 90;
-                    }
 
                     /* imageproxy to bitmap */
                     var data = ImageUtil.ImageToJpegByteArray(imageProxy);
@@ -226,7 +217,6 @@ namespace TestLog.Droid.Camera2
 
                     var result = await ProcessImage(mediaOptions, imageBitmap, correctRotation, path);
 
-                   
                     imageBitmap.Recycle();
                     imageBitmap.Dispose();
                     GC.Collect();
@@ -274,12 +264,13 @@ namespace TestLog.Droid.Camera2
         [Obsolete]
         private File GetOutputDirectory()
         {
-            File mediaDir
+            File mediaDir;
             if (string.IsNullOrEmpty(mediaOptions?.Directory))
-                mediaDir = Environment.GetExternalStoragePublicDirectory(System.IO.Path.Combine(Environment.DirectoryPictures, appName));
+                mediaDir = Environment.GetExternalStoragePublicDirectory(System.IO.Path.Combine(Environment.DirectoryPictures, AppName));
             else
-                File mediaDir = Environment.GetExternalStoragePublicDirectory(System.IO.Path.Combine(Environment.DirectoryPictures, appName));
+                mediaDir = Environment.GetExternalStoragePublicDirectory(System.IO.Path.Combine(Environment.DirectoryPictures, AppName));
 
+            System.Diagnostics.Debug.WriteLine("MediaDir Path: " + mediaDir.Path);
             if (mediaDir != null && mediaDir.Exists())
                 return mediaDir;
 
@@ -335,6 +326,32 @@ namespace TestLog.Droid.Camera2
             }
         }
 
+        public void SetZoomAndFocusTouchListener()
+        {
+            // TODO Cris: bkin opsi hanya bisa di Zoom / Focus / 2 2 nya
+            //#region Pinch to Zoom
+            //ScaleGestureListener listener = new ScaleGestureListener(camera.CameraControl, camera.CameraInfo);
+            //ScaleGestureDetector scaleGestureDetector = new ScaleGestureDetector(_context, listener);
+            //ScaleTouchListener scaleTouchListener = new ScaleTouchListener(scaleGestureDetector);
+            //previewView.SetOnTouchListener(scaleTouchListener);
+            //#endregion
+
+            //#region Tap to Focus
+            //FocusTouchListener focusTouchListener = new FocusTouchListener(previewView.MeteringPointFactory, camera.CameraControl);
+            //previewView.SetOnTouchListener(focusTouchListener);
+            ////previewView.listen
+            //#endregion
+
+            #region Pinch to Zoom & Tap To Focus
+            ScaleGestureListener listener = new ScaleGestureListener(camera.CameraControl, camera.CameraInfo);
+            ScaleGestureDetector scaleGestureDetector = new ScaleGestureDetector(_context, listener);
+            ZoomAndFocusTouchListener zoomAndFocusTouchListener = new ZoomAndFocusTouchListener(scaleGestureDetector, previewView.MeteringPointFactory, camera.CameraControl);
+            //ScaleTouchListener scaleTouchListener = new ScaleTouchListener(scaleGestureDetector);
+            previewView.SetOnTouchListener(zoomAndFocusTouchListener);
+            #endregion
+        }
+
+
         public void UpdateCamera()
         {
             if (cameraProvider != null)
@@ -343,12 +360,18 @@ namespace TestLog.Droid.Camera2
                 cameraProvider.UnbindAll();
 
                 // Select back camera as a default, or front camera otherwise
-                if (cameraLocation == CameraLocation.Rear && cameraProvider.HasCamera(CameraSelector.DefaultBackCamera))
-                    cameraSelector = CameraSelector.DefaultBackCamera;
-                else if (cameraLocation == CameraLocation.Front && cameraProvider.HasCamera(CameraSelector.DefaultFrontCamera))
-                    cameraSelector = CameraSelector.DefaultFrontCamera;
-                else
-                    cameraSelector = CameraSelector.DefaultBackCamera;
+                switch (cameraLocation)
+                {
+                    case CameraLocation.Rear when cameraProvider.HasCamera(CameraSelector.DefaultBackCamera):
+                        cameraSelector = CameraSelector.DefaultBackCamera;
+                        break;
+                    case CameraLocation.Front when cameraProvider.HasCamera(CameraSelector.DefaultFrontCamera):
+                        cameraSelector = CameraSelector.DefaultFrontCamera;
+                        break;
+                    default:
+                        cameraSelector = CameraSelector.DefaultBackCamera;
+                        break;
+                }
 
                 if (cameraSelector == null)
                     throw new Exception("Camera not found");
@@ -359,27 +382,7 @@ namespace TestLog.Droid.Camera2
                 
                 SetFlash(Element.FlashMode);
 
-                // TODO Cris: bkin opsi hanya bisa di Zoom / Focus / 2 2 nya
-                //#region Pinch to Zoom
-                //ScaleGestureListener listener = new ScaleGestureListener(camera.CameraControl, camera.CameraInfo);
-                //ScaleGestureDetector scaleGestureDetector = new ScaleGestureDetector(_context, listener);
-                //ScaleTouchListener scaleTouchListener = new ScaleTouchListener(scaleGestureDetector);
-                //previewView.SetOnTouchListener(scaleTouchListener);
-                //#endregion
-
-                //#region Tap to Focus
-                //FocusTouchListener focusTouchListener = new FocusTouchListener(previewView.MeteringPointFactory, camera.CameraControl);
-                //previewView.SetOnTouchListener(focusTouchListener);
-                ////previewView.listen
-                //#endregion
-
-                #region Pinch to Zoom & Tap To Focus
-                ScaleGestureListener listener = new ScaleGestureListener(camera.CameraControl, camera.CameraInfo);
-                ScaleGestureDetector scaleGestureDetector = new ScaleGestureDetector(_context, listener);
-                ZoomAndFocusTouchListener zoomAndFocusTouchListener = new ZoomAndFocusTouchListener(scaleGestureDetector, previewView.MeteringPointFactory, camera.CameraControl);
-                //ScaleTouchListener scaleTouchListener = new ScaleTouchListener(scaleGestureDetector);
-                previewView.SetOnTouchListener(zoomAndFocusTouchListener);
-                #endregion
+                SetZoomAndFocusTouchListener();
             }
         }
 
@@ -403,7 +406,7 @@ namespace TestLog.Droid.Camera2
             cameraSelector?.Dispose();
             cameraProvider?.Dispose();
             camera?.Dispose();
-            //previewObserver?.Dispose();
+            previewObserver?.Dispose();
 
             base.Dispose(disposing);
         }
@@ -475,7 +478,7 @@ namespace TestLog.Droid.Camera2
                         originalImage = DoFlipHorizontal(originalImage, rotation);
 
                         // Draw Placemark
-                        originalImage = DrawPlacemark(originalImage, placemark);
+                        originalImage = DrawPlacemark(originalImage, mediaOptions?.Placemark);
 
                         //always need to compress to save back to disk
                         using FileStream stream = new FileStream(outputPath, FileMode.Create);
@@ -557,22 +560,18 @@ namespace TestLog.Droid.Camera2
         /// </summary>
         private Bitmap DoFlipHorizontal(Bitmap originalImage, int rotation)
         {
-            if (rotation > 90 || rotation < 0)
-            {
-                Bitmap mutableBitmap = originalImage.Copy(Bitmap.Config.Argb8888, true);
-                Canvas canvas = new Canvas(originalImage);
-                Matrix flipHorizontalMatrix = new Matrix();
-                flipHorizontalMatrix.SetScale(-1, 1);
-                flipHorizontalMatrix.PostTranslate(mutableBitmap.Width, 0);
-                canvas.DrawBitmap(mutableBitmap, flipHorizontalMatrix, null);
-                canvas.Dispose();
+            if (rotation <= 90 && rotation >= 0 || cameraLocation != CameraLocation.Front)
+                return originalImage;
 
-                return originalImage;
-            }
-            else
-            {
-                return originalImage;
-            }
+            Bitmap mutableBitmap = originalImage.Copy(Bitmap.Config.Argb8888, true);
+            Canvas canvas = new Canvas(originalImage);
+            Matrix flipHorizontalMatrix = new Matrix();
+            flipHorizontalMatrix.SetScale(-1, 1);
+            flipHorizontalMatrix.PostTranslate(mutableBitmap.Width, 0);
+            canvas.DrawBitmap(mutableBitmap, flipHorizontalMatrix, null);
+            canvas.Dispose();
+
+            return originalImage;
         }
 
         // nyontek dari https://github.com/jamesmontemagno/MediaPlugin/blob/master/src/Media.Plugin/Android/MediaImplementation.cs#L795-L818
@@ -603,14 +602,12 @@ namespace TestLog.Droid.Camera2
 
         private async Task<byte[]> GetBytesAsync(Stream input)
         {
-            using (MemoryStream memoryStream = new MemoryStream())
-            {
-                input.Position = 0;
+            using MemoryStream memoryStream = new MemoryStream();
+            input.Position = 0;
 
-                await input.CopyToAsync(memoryStream);
+            await input.CopyToAsync(memoryStream);
 
-                return memoryStream.ToArray();
-            }
+            return memoryStream.ToArray();
         }
     }
 }

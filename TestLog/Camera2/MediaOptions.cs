@@ -56,43 +56,6 @@
         public Placemark Placemark { get; set; }
     }
 
-    /// <summary>
-    /// Photo size enum.
-    /// </summary>
-    public enum PhotoSize
-    {
-        /// <summary>
-        /// 25% of original
-        /// </summary>
-        Small,
-        /// <summary>
-        /// 50% of the original
-        /// </summary>
-        Medium,
-        /// <summary>
-        /// 75% of the original
-        /// </summary>
-        Large,
-        /// <summary>
-        /// Untouched
-        /// </summary>
-        Full,
-        /// <summary>
-        /// Custom size between 1-100
-        /// Must set the CustomPhotoSize value
-        /// Only applies to iOS and Android
-        /// Windows will auto configure back to small, medium, large, and full
-        /// </summary>
-        Custom,
-        /// <summary>
-        /// Use the Max Width or Height photo size.
-        /// The property ManualSize must be set to a value. The MaxWidthHeight will be the max width or height of the image
-        /// Currently this works on iOS and Android only.
-        /// On Windows the PhotoSize will fall back to Full
-        /// </summary>
-        MaxWidthHeight
-    }
-
     public class Location
     {
         public double Latitude { get; set; }
@@ -104,100 +67,56 @@
         /// <summary>Gets or sets the location of the placemark.</summary>
         /// <value>The location of the placemark.</value>
         /// <remarks />
-        public Location Location
-        {
-            get;
-            set;
-        }
+        public Location Location { get; set; }
 
         /// <summary>Gets or sets the country ISO code.</summary>
         /// <value>The country ISO code.</value>
         /// <remarks />
-        public string CountryCode
-        {
-            get;
-            set;
-        }
+        public string CountryCode { get; set; }
 
         /// <summary>Gets or sets the country name.</summary>
         /// <value>The country name.</value>
         /// <remarks />
-        public string CountryName
-        {
-            get;
-            set;
-        }
+        public string CountryName { get; set; }
 
         /// <summary>Gets or sets the feature name.</summary>
         /// <value>The feature name.</value>
         /// <remarks />
-        public string FeatureName
-        {
-            get;
-            set;
-        }
+        public string FeatureName { get; set; }
 
         /// <summary>Gets or sets the postal code.</summary>
         /// <value>The postal code.</value>
         /// <remarks />
-        public string PostalCode
-        {
-            get;
-            set;
-        }
+        public string PostalCode { get; set; }
 
         /// <summary>Gets or sets the sub locality.</summary>
         /// <value>The sub locality.</value>
         /// <remarks />
-        public string SubLocality
-        {
-            get;
-            set;
-        }
+        public string SubLocality { get; set; }
 
         /// <summary>Gets or sets the street name.</summary>
         /// <value>The street name.</value>
         /// <remarks />
-        public string Thoroughfare
-        {
-            get;
-            set;
-        }
+        public string Thoroughfare { get; set; }
 
         /// <summary>Gets or sets optional info: sub street or region.</summary>
         /// <value>The sub thoroughfare.</value>
         /// <remarks />
-        public string SubThoroughfare
-        {
-            get;
-            set;
-        }
+        public string SubThoroughfare { get; set; }
 
         /// <summary>Gets or sets the city or town.</summary>
         /// <value>The city or town of the locality.</value>
         /// <remarks />
-        public string Locality
-        {
-            get;
-            set;
-        }
+        public string Locality { get; set; }
 
         /// <summary>Gets or sets the administrative area name of the address, for example, "CA", or null if it is unknown.</summary>
         /// <value>The admin area.</value>
         /// <remarks />
-        public string AdminArea
-        {
-            get;
-            set;
-        }
+        public string AdminArea { get; set; }
 
         /// <summary>Gets or sets the sub-administrative area name of the address, for example, "Santa Clara County", or null if it is unknown.</summary>
         /// <value>The sub-admin area.</value>
         /// <remarks />
-        public string SubAdminArea
-        {
-            get;
-            set;
-        }
+        public string SubAdminArea { get; set; }
     }
-    }
+}

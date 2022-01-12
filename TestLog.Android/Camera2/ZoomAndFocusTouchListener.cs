@@ -1,5 +1,4 @@
-﻿using System;
-using Android.Views;
+﻿using Android.Views;
 using AndroidX.Camera.Core;
 
 namespace TestLog.Droid.Camera2

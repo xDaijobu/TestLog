@@ -5,19 +5,6 @@ using Xamarin.Forms.Internals;
 
 namespace TestLog.Camera2
 {
-    public enum CameraOptions
-    {
-        Rear,
-        Front
-    }
-
-    public enum FlashMode
-    {
-        Off,
-        On,
-        Auto,
-    }
-
     public class CameraPreview : ContentView
     {
         [Preserve(Conditional = true)]
