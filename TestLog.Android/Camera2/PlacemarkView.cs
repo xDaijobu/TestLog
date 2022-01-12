@@ -1,5 +1,4 @@
-﻿using System;
-using Android.Content;
+﻿using Android.Content;
 using Android.Graphics;
 using Android.Util;
 using Android.Views;
@@ -7,20 +6,20 @@ using TestLog.Camera2;
 
 namespace TestLog.Droid.Camera2
 {
-    public class DrawView : View
+    public class PlacemarkView : View
     {
         private int _height, _width;
         private Placemark _placemark;
-        public DrawView(Context context, int height, int width, Placemark placemark) : base(context)
+        public PlacemarkView(Context context, int height, int width, Placemark placemark) : base(context)
         {
             _height = height;
             _width = width;
             _placemark = placemark;
         }
-        public DrawView(Context context, IAttributeSet attrs) : base(context, attrs)
+        public PlacemarkView(Context context, IAttributeSet attrs) : base(context, attrs)
         {
         }
-        public DrawView(Context context, IAttributeSet attrs, int defStyle) : base(context, attrs, defStyle)
+        public PlacemarkView(Context context, IAttributeSet attrs, int defStyle) : base(context, attrs, defStyle)
         {
         }
 

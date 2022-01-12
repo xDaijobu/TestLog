@@ -28,36 +28,22 @@ namespace TestLog
         {
             base.OnAppearing();
 
-
-            cameraPreview.MediaCaptured += (s, args) =>
-            {
-                Debug.WriteLine("Data: " + args.ImageData);
-                Debug.WriteLine("Path: " + args.Path);
-
-                Device.BeginInvokeOnMainThread(() =>
-                {
-                    image.Source = ImageSource.FromFile(args.Path);
-                    
-                    SetEnabledButtons(true);
-                });
-            };
             cameraPreview.MediaOptions = new Camera2.MediaOptions()
             {
                 //SaveToAlbum =
                 CompressionQuality = 50, /*SATO SAMA HRTO PAKAINYA 50*/
                 PhotoSize = Camera2.PhotoSize.Small,
                 MaxWidthHeight = 2000,
-            };
-
-            cameraPreview.Placemark = new Camera2.Placemark()
-            {
-                Location = new Camera2.Location()
+                Placemark = new Camera2.Placemark()
                 {
-                    Latitude = 1.1231231,
-                    Longitude = 108.555555,
-                },
-                CountryName = "Indonesia",
-                SubAdminArea = "Testing",
+                    Location = new Camera2.Location()
+                    {
+                        Latitude = 1.1231231,
+                        Longitude = 108.555555,
+                    },
+                    CountryName = "Indonesia",
+                    SubAdminArea = "Testing",
+                }
             };
         }
 
@@ -81,13 +67,12 @@ namespace TestLog
         async void Button_Clicked_1(object sender, EventArgs e)
         {
             SetEnabledButtons(false);
-            if (cameraPreview.CameraOptions == Camera2.CameraOptions.Rear)
-                cameraPreview.CameraOptions = Camera2.CameraOptions.Front;
-            else
-                cameraPreview.CameraOptions = Camera2.CameraOptions.Rear;
+
+            cameraPreview.CameraOptions = cameraPreview.CameraOptions == Camera2.CameraOptions.Rear ? Camera2.CameraOptions.Front : Camera2.CameraOptions.Rear;
 
             btnSwitchCam.Text = cameraPreview.CameraOptions.ToString();
             await Task.Delay(1000);
+
             SetEnabledButtons(true);
         }
 
@@ -108,6 +93,20 @@ namespace TestLog
         void Button_Clicked_3(object sender, EventArgs e)
         {
             Navigation.PopModalAsync();
+        }
+
+        void cameraPreview_MediaCaptured(object sender, Camera2.MediaCapturedEventArgs e)
+        {
+            Debug.WriteLine("Data: " + e.ImageData.Length);
+            Debug.WriteLine("Path: " + e.Path);
+
+            Device.BeginInvokeOnMainThread(() =>
+            {
+                image.Source = e.Image;
+                //image.Source = ImageSource.FromFile(e.Path);
+
+                SetEnabledButtons(true);
+            });
         }
     }
 }

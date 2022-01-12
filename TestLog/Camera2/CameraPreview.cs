@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using Xamarin.Forms;
+using Xamarin.Forms.Internals;
 
 namespace TestLog.Camera2
 {
@@ -17,8 +18,9 @@ namespace TestLog.Camera2
         Auto,
     }
 
-    public class CameraPreview : View
+    public class CameraPreview : ContentView
     {
+        [Preserve(Conditional = true)]
         public event EventHandler<MediaCapturedEventArgs> MediaCaptured;
 
         Command cameraClick;
@@ -35,23 +37,13 @@ namespace TestLog.Camera2
             declaringType: typeof(CameraPreview),
             defaultValue: FlashMode.Off);
 
-        public static readonly BindableProperty DirectoryProperty = BindableProperty.Create(
-            propertyName: nameof(Directory),
-            returnType: typeof(string),
-            declaringType: typeof(CameraPreview),
-            defaultValue: string.Empty);
-
         public static readonly BindableProperty MediaOptionsProperty = BindableProperty.Create(
             propertyName: nameof(MediaOptions),
             returnType: typeof(MediaOptions),
             declaringType: typeof(CameraPreview),
             defaultValue: default(MediaOptions));
 
-        public static readonly BindableProperty PlacemarkProperty = BindableProperty.Create(
-            propertyName: nameof(Placemark),
-            returnType: typeof(Placemark),
-            declaringType: typeof(CameraPreview),
-            defaultValue: null);
+        public static readonly BindableProperty IsBusyProperty = BindableProperty.Create(nameof(IsBusy), typeof(bool), typeof(CameraPreview), false);
 
         public CameraOptions CameraOptions
         {
@@ -65,22 +57,10 @@ namespace TestLog.Camera2
             set { SetValue(FlashModeProperty, value); }
         }
 
-        public string Directory
-        {
-            get { return (string)GetValue(DirectoryProperty); }
-            set { SetValue(DirectoryProperty, value); }
-        }
-
         public MediaOptions MediaOptions
         {
             get { return (MediaOptions)GetValue(MediaOptionsProperty); }
             set { SetValue(MediaOptionsProperty, value); }
-        }
-
-        public Placemark Placemark
-        {
-            get { return (Placemark)GetValue(PlacemarkProperty); }
-            set { SetValue(PlacemarkProperty, value); }
         }
 
         public Command CameraClick
@@ -89,17 +69,20 @@ namespace TestLog.Camera2
             set { cameraClick = value; }
         }
 
-        public void PictureTaken()
+        public bool IsBusy
         {
-            PictureFinished?.Invoke();
+            get => (bool)GetValue(IsBusyProperty);
+            set => SetValue(IsBusyProperty, value);
         }
-
-        public event Action PictureFinished;
 
         public void RaiseMediaCaptured(MediaCapturedEventArgs args)
         {
             Debug.WriteLine("RaiseMediaCaptured");
             MediaCaptured?.Invoke(this, args);
+        }
+
+        public CameraPreview()
+        {
         }
     }
 }

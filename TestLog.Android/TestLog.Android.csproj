@@ -72,14 +72,13 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ToLogger.cs" />
     <Compile Include="Camera2\CameraPreviewRenderer.cs" />
-    <Compile Include="Camera2\FrameAnalyzer.cs" />
     <Compile Include="Camera2\ScaleGestureListener.cs" />
     <Compile Include="Camera2\ImageSaveCallback.cs" />
     <Compile Include="Camera2\ScaleTouchListener.cs" />
     <Compile Include="Camera2\FocusTouchListener.cs" />
     <Compile Include="Camera2\ZoomAndFocusTouchListener.cs" />
     <Compile Include="Camera2\PreviewObserver.cs" />
-    <Compile Include="Camera2\DrawView.cs" />
+    <Compile Include="Camera2\PlacemarkView.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\AboutResources.txt" />

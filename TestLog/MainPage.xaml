@@ -7,7 +7,7 @@
 
     <Grid>
         <!--  first layer  -->
-        <camera2:CameraPreview x:Name="cameraPreview" CameraOptions="Front" />
+        <camera2:CameraPreview x:Name="cameraPreview" CameraOptions="Front" MediaCaptured="cameraPreview_MediaCaptured"/>
 
         <StackLayout
             Margin="10"

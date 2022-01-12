@@ -8,11 +8,6 @@
         public int? MaxWidthHeight { get; set; }
 
         /// <summary>
-        // Get or set if the image should be stored public
-        /// </summary>
-        public bool SaveToAlbum { get; set; }
-
-        /// <summary>
         /// Gets or sets the size of the photo.
         /// </summary>
         /// <value>The size of the photo.</value>
@@ -58,31 +53,7 @@
             }
         }
 
-        /// <summary>
-        /// Store provided location
-        /// </summary>
-        public Location Location { get; set; }
-
-        bool rotateImage = true;
-        /// <summary>
-        /// Should the library rotate image according to received exif orientation.
-        /// Set to true by default.
-        /// </summary>
-        public bool RotateImage
-        {
-            get { return rotateImage; }
-            set { rotateImage = value; }
-        }
-
-        bool saveMetaData = true;
-        /// <summary>
-        /// Saves metadate/exif data from the original file.
-        /// </summary>
-        public bool SaveMetaData
-        {
-            get { return saveMetaData; }
-            set { saveMetaData = value; }
-        }
+        public Placemark Placemark { get; set; }
     }
 
     /// <summary>

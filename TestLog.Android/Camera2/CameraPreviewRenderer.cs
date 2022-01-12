@@ -30,6 +30,7 @@ using Android.OS;
 using AndroidX.Camera.Core.Internal.Utils;
 using View = Android.Views.View;
 using Rect = Android.Graphics.Rect;
+using Android.Content.PM;
 
 [assembly: ExportRenderer(typeof(CameraPreview), typeof(CameraPreviewRenderer))]
 namespace TestLog.Droid.Camera2
@@ -41,7 +42,16 @@ namespace TestLog.Droid.Camera2
         File outputDirectory;
         private const string TAG = nameof(CameraPreviewRenderer);
         private const string FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS";
-        string directory = "ToCam";
+
+        string appName
+        {
+            get
+            {
+                ApplicationInfo applicationInfo = _context.PackageManager.GetApplicationInfo(_context.ApplicationInfo.PackageName, 0);
+                return applicationInfo != null ? _context.PackageManager.GetApplicationLabel(applicationInfo) : "ToCam";
+            }
+        }
+
         Preview cameraPreview;
         ImageAnalysis imageAnalyzer;
         PreviewView previewView;
@@ -72,14 +82,14 @@ namespace TestLog.Droid.Camera2
 
         protected async Task<PreviewView> InitPreviewView()
         {
-            if (!await CheckPermissions())
+            if (!await CheckAndRequestPermissions())
                 throw new NotImplementedException("Permission Camera nyaaaaaaa");
 
             var previewView = new PreviewView(_context);
             UpdateCameraOptions(Element.CameraOptions);
             mediaOptions = Element.MediaOptions;
-            placemark = Element.Placemark;
-
+            placemark = mediaOptions?.Placemark;
+            outputDirectory = GetOutputDirectory();
             cameraExecutor = Executors.NewSingleThreadExecutor();
             Connect();
 
@@ -94,7 +104,6 @@ namespace TestLog.Droid.Camera2
             base.OnElementChanged(e);
             _currentElement = e.NewElement;
             previewView = await InitPreviewView();
-            outputDirectory = GetOutputDirectory();
 
             SetNativeControl(previewView);
         }
@@ -112,22 +121,15 @@ namespace TestLog.Droid.Camera2
             if (e.PropertyName == nameof(CameraPreview.FlashMode))
                 SetFlash(Element.FlashMode);
 
-            if (e.PropertyName == nameof(CameraPreview.Directory))
-                directory = Element.Directory;
-
             if (e.PropertyName == nameof(CameraPreview.MediaOptions))
-                mediaOptions = Element.MediaOptions;
-
-            if (e.PropertyName == nameof(CameraPreview.Placemark))
             {
-                placemark = Element.Placemark;
-                System.Diagnostics.Debug.WriteLine("Lat: " + placemark?.Location?.Latitude);
-                System.Diagnostics.Debug.WriteLine("Lon: " + placemark?.Location?.Longitude);
-                previewObserver?.DrawAction(placemark);
+                mediaOptions = Element.MediaOptions;
+                placemark = mediaOptions?.Placemark;
+                previewObserver?.UpdatePlacemark(placemark);
             }
         }
 
-        public async Task<bool> CheckPermissions()
+        public async Task<bool> CheckAndRequestPermissions()
         {
             return
                 (await Xamarin.Essentials.Permissions.RequestAsync<Xamarin.Essentials.Permissions.Camera>()) == Xamarin.Essentials.PermissionStatus.Granted &&
@@ -139,7 +141,7 @@ namespace TestLog.Droid.Camera2
         {
             var cameraProviderFuture = ProcessCameraProvider.GetInstance(_context);
 
-            cameraProviderFuture.AddListener(new Java.Lang.Runnable(() =>
+            cameraProviderFuture.AddListener(new Runnable(() =>
             {
                 try
                 {
@@ -159,44 +161,27 @@ namespace TestLog.Droid.Camera2
 
                     _currentElement.CameraClick = new Command(async () =>
                     {
-                        var result = await TakePicture();
-                        System.Diagnostics.Debug.WriteLine("Result TakePicture: " + result + " | " + DateTime.Now);
+                        _ = await TakePicture();
                     });
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine("Error ! : " + ex);
+                    Console.WriteLine("Error in cameraProviderFuture.AddListener ! : " + ex);
                 }
 
             }), ContextCompat.GetMainExecutor(_context)); //GetMainExecutor: returns an Executor that runs on the main thread.
         }
 
-        [Obsolete]
-        void ExportBitmapAsPNG(Bitmap bitmap)
-        {
-            var sdCardPath = Android.OS.Environment.ExternalStorageDirectory.AbsolutePath;
-            var filePath = System.IO.Path.Combine(sdCardPath, $"test{System.DateTime.Now.Ticks}.png");
-            var stream = new FileStream(filePath, FileMode.Create);
-            bitmap.Compress(Bitmap.CompressFormat.Png, 100, stream);
-            stream.Close();
-        }
-
         private async Task<bool> TakePicture()
         {
-            var completionSource = new TaskCompletionSource<bool>();
+            TaskCompletionSource<bool> completionSource = new TaskCompletionSource<bool>();
 
             // Get a stable reference of the modifiable image capture use case   
             var imageCapture = this.imageCapture;
             if (imageCapture == null)
                 return false;
-            //// Create time-stamped output file to hold the image
-            //var photoFile = new File(outputDirectory, new Java.Text.SimpleDateFormat(FILENAME_FORMAT, Locale.Us).Format(JavaSystem.CurrentTimeMillis()) + ".jpg");
-
-            //// Create output options object which contains file + metadata
-            //var outputOptions = new OutputFileOptions.Builder(photoFile).Build();
 
             // Set up image capture listener, which is triggered after photo has been taken
-
             #region Versi 1: This method provides an in-memory buffer of the captured image.
             imageCapture.TakePicture(ContextCompat.GetMainExecutor(_context), new ImageCapturedCallback(
                 completionSource,
@@ -224,41 +209,34 @@ namespace TestLog.Droid.Camera2
 
                     /* https://developer.android.com/reference/androidx/camera/core/ImageInfo#getRotationDegrees() */
                     int correctRotation = imageProxy.ImageInfo.RotationDegrees;
+
                     System.Diagnostics.Debug.WriteLine("Correct Rotation: " + correctRotation);
 
                     if ((Build.VERSION.SdkInt == BuildVersionCodes.LollipopMr1 ||
                         Build.VERSION.SdkInt == BuildVersionCodes.Lollipop)
                         )
                     {
-                        if (cameraSelector == CameraSelector.DefaultFrontCamera)
-                            correctRotation = -90;
-                        else
-                            correctRotation = 90;
-
+                        correctRotation = cameraSelector == CameraSelector.DefaultFrontCamera ? -90 : 90;
                     }
 
                     /* imageproxy to bitmap */
                     var data = ImageUtil.ImageToJpegByteArray(imageProxy);
-                    System.Diagnostics.Debug.WriteLine("ImageProxy To Byte ~ " + DateTime.Now);
                     imageProxy.Close();
                     var imageBitmap = BitmapFactory.DecodeByteArray(data, 0, data.Length);
 
-                    await FixOrientationAndResizeAsync(mediaOptions, imageBitmap, correctRotation, path);
+                    var result = await ProcessImage(mediaOptions, imageBitmap, correctRotation, path);
 
-                    //System.Diagnostics.Debug.WriteLine("Array to Bitmap ~ " + DateTime.Now);
-                    //var finalBitmap = RotateBitmap(imageBitmap, correctOrientation);
-                    //System.Diagnostics.Debug.WriteLine("Rotate Bitmap ~ " + DateTime.Now);
+                   
+                    imageBitmap.Recycle();
+                    imageBitmap.Dispose();
+                    GC.Collect();
 
-                    //using FileStream os = new FileStream(path, FileMode.Create);
-                    //await finalBitmap.CompressAsync(Bitmap.CompressFormat.Png, 100, os);
-                    //System.Diagnostics.Debug.WriteLine("Bitmap Compress ~ " + DateTime.Now);
-                    //os.Close();
-
-                    _currentElement?.RaiseMediaCaptured(new MediaCapturedEventArgs(imageData: data, path: path));
-
-                    completionSource.TrySetResult(true);
+                    if (!result)
+                        completionSource.SetCanceled();
+                    else
+                        completionSource.TrySetResult(true);
                 }
-                ));
+            ));
 
             var result = await completionSource.Task;
             return result;
@@ -292,20 +270,15 @@ namespace TestLog.Droid.Camera2
             //#endregion
         }
 
-        public static Bitmap LoadBitmapFromView(View v)
-        {
-            Bitmap b = Bitmap.CreateBitmap(v.Width, v.Height, Bitmap.Config.Argb8888);
-            Canvas c = new Canvas(b);
-            v.Layout(v.Left, v.Top, v.Right, v.Bottom);
-            v.Draw(c);
-            return b;
-        }
-
         // Save photos to => /Pictures/CameraX/
         [Obsolete]
         private File GetOutputDirectory()
         {
-            File mediaDir = Environment.GetExternalStoragePublicDirectory(System.IO.Path.Combine(Environment.DirectoryPictures, directory));
+            File mediaDir
+            if (string.IsNullOrEmpty(mediaOptions?.Directory))
+                mediaDir = Environment.GetExternalStoragePublicDirectory(System.IO.Path.Combine(Environment.DirectoryPictures, appName));
+            else
+                File mediaDir = Environment.GetExternalStoragePublicDirectory(System.IO.Path.Combine(Environment.DirectoryPictures, appName));
 
             if (mediaDir != null && mediaDir.Exists())
                 return mediaDir;
@@ -435,16 +408,20 @@ namespace TestLog.Droid.Camera2
             base.Dispose(disposing);
         }
 
-        // nyontek dari https://github.com/jamesmontemagno/MediaPlugin/blob/master/src/Media.Plugin/Android/MediaImplementation.cs#L652-L793
-        // ngga 100% sama
-        public Task<bool> FixOrientationAndResizeAsync(MediaOptions options, Bitmap originalImage, int rotation, string outputPath)
+        // Fix
+        // - Orientation
+        // - Resize
+        // - Flip
+        // - Scaled
+        // - Placemark
+        public Task<bool> ProcessImage(MediaOptions options, Bitmap originalImage, int rotation, string outputPath)
         {
             if (originalImage == null)
                 return Task.FromResult(false);
 
             try
             {
-                return Task.Run(() =>
+                return Task.Run(async () =>
                 {
                     try
                     {
@@ -480,13 +457,13 @@ namespace TestLog.Droid.Camera2
                         var finalWidth = (int)(originalImage.Width * percent);
                         var finalHeight = (int)(originalImage.Height * percent);
 
-                        // SCALE 
+                        // Scale Image
                         if (finalWidth != originalImage.Width || finalHeight != originalImage.Height)
                             originalImage = Bitmap.CreateScaledBitmap(originalImage, finalWidth, finalHeight, true);
 
                         var compressFormat = Bitmap.CompressFormat.Jpeg;
 
-                        // rotate gambar nya klo perlu
+                        // Rotate Image
                         if (rotation != 0)
                         {
                             var matrix = new Matrix();
@@ -494,15 +471,18 @@ namespace TestLog.Droid.Camera2
                             originalImage = Bitmap.CreateBitmap(originalImage, 0, 0, originalImage.Width, originalImage.Height, matrix, true);
                         }
 
-                        // FLIP GAMBAR NYA
+                        // Flip Image
                         originalImage = DoFlipHorizontal(originalImage, rotation);
 
-                        // DRAW Placemark
+                        // Draw Placemark
                         originalImage = DrawPlacemark(originalImage, placemark);
 
                         //always need to compress to save back to disk
                         using FileStream stream = new FileStream(outputPath, FileMode.Create);
-                        originalImage.Compress(compressFormat, mediaOptions.CompressionQuality, stream);
+                        await originalImage.CompressAsync(compressFormat, mediaOptions.CompressionQuality, stream);
+
+                        var bytes = await GetBytesAsync(stream);
+                        _currentElement?.RaiseMediaCaptured(new MediaCapturedEventArgs(imageData: bytes, path: outputPath));
 
                         originalImage.Recycle();
                         originalImage.Dispose();
@@ -619,6 +599,18 @@ namespace TestLog.Droid.Camera2
             }
 
             return inSampleSize;
+        }
+
+        private async Task<byte[]> GetBytesAsync(Stream input)
+        {
+            using (MemoryStream memoryStream = new MemoryStream())
+            {
+                input.Position = 0;
+
+                await input.CopyToAsync(memoryStream);
+
+                return memoryStream.ToArray();
+            }
         }
     }
 }
