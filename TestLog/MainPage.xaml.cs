@@ -33,19 +33,23 @@ namespace TestLog
             cameraPreview.MediaOptions = new Camera2.MediaOptions()
             {
                 //SaveToAlbum =
-                CompressionQuality = 75, /*SATO SAMA HRTO PAKAINYA 50*/
-                PhotoSize = Camera2.PhotoSize.Medium,
-
+                CompressionQuality = 50, /*SATO SAMA HRTO PAKAINYA 50*/
+                PhotoSize = Camera2.PhotoSize.Small,
+                Directory = "/storage/emulated/0/Android/data/testing.testlog/files/Pictures/TestLog",
                 MaxWidthHeight = 2000,
                 Placemark = new Camera2.Placemark()
                 {
                     Location = new Camera2.Location()
                     {
-                        Latitude = 1.1231231,
-                        Longitude = 108.555555,
+                        Latitude = -6.1649888,
+                        Longitude = 106.9142543,
                     },
+                    SubLocality = "Pegangsaan Dua",
+                    Locality = "Kecamatan Kelapa Gading",
+                    SubAdminArea = "Kota Jakarta Utara",
+                    AdminArea = "Daerah Khusus Ibukota Jakarta",
+                    PostalCode = "14250",
                     CountryName = "Indonesia",
-                    SubAdminArea = "Testing",
                 }
             };
 

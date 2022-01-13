@@ -69,20 +69,20 @@
         /// <remarks />
         public Location Location { get; set; }
 
-        /// <summary>Gets or sets the country ISO code.</summary>
-        /// <value>The country ISO code.</value>
-        /// <remarks />
-        public string CountryCode { get; set; }
-
         /// <summary>Gets or sets the country name.</summary>
         /// <value>The country name.</value>
         /// <remarks />
         public string CountryName { get; set; }
 
-        /// <summary>Gets or sets the feature name.</summary>
-        /// <value>The feature name.</value>
+        /// <summary>Gets or sets the sub-administrative area name of the address, for example, "Santa Clara County", or null if it is unknown.</summary>
+        /// <value>The sub-admin area.</value>
         /// <remarks />
-        public string FeatureName { get; set; }
+        public string SubAdminArea { get; set; }
+
+        /// <summary>Gets or sets the administrative area name of the address, for example, "CA", or null if it is unknown.</summary>
+        /// <value>The admin area.</value>
+        /// <remarks />
+        public string AdminArea { get; set; }
 
         /// <summary>Gets or sets the postal code.</summary>
         /// <value>The postal code.</value>
@@ -94,29 +94,9 @@
         /// <remarks />
         public string SubLocality { get; set; }
 
-        /// <summary>Gets or sets the street name.</summary>
-        /// <value>The street name.</value>
-        /// <remarks />
-        public string Thoroughfare { get; set; }
-
-        /// <summary>Gets or sets optional info: sub street or region.</summary>
-        /// <value>The sub thoroughfare.</value>
-        /// <remarks />
-        public string SubThoroughfare { get; set; }
-
         /// <summary>Gets or sets the city or town.</summary>
         /// <value>The city or town of the locality.</value>
         /// <remarks />
         public string Locality { get; set; }
-
-        /// <summary>Gets or sets the administrative area name of the address, for example, "CA", or null if it is unknown.</summary>
-        /// <value>The admin area.</value>
-        /// <remarks />
-        public string AdminArea { get; set; }
-
-        /// <summary>Gets or sets the sub-administrative area name of the address, for example, "Santa Clara County", or null if it is unknown.</summary>
-        /// <value>The sub-admin area.</value>
-        /// <remarks />
-        public string SubAdminArea { get; set; }
     }
 }

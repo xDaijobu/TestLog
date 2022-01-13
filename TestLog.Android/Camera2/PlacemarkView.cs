@@ -30,37 +30,7 @@ namespace TestLog.Droid.Camera2
             //canvas.Save();
             //canvas.Translate(_height, _width);
 
-            string text = $"Latitude: {_placemark?.Location?.Latitude}\n" +
-                          $"Longitude: {_placemark?.Location?.Longitude}\n" +
-                          $"{_placemark?.CountryName}";
-
-            float x = Width / 2, y = Height / 2;
-            Paint paint = new Paint();
-            paint.Color = Color.White;
-            paint.AntiAlias = true;
-            paint.TextAlign = Paint.Align.Right;
-            //paint.SetTypeface(Typeface.DefaultBold);
-
-            //paint.TextSize = 25;
-            // set text size for width
-            float testTextSize = 48f;
-            // Get the bounds of the text, using our testTextSize.  
-            paint.TextSize = testTextSize;
-            Rect bounds = new Rect();
-            paint.GetTextBounds(text, 0, text.Length, bounds);
-
-            // Calculate the desired size as a proportion of our testTextSize.
-            float desiredTextSize = testTextSize * _width / bounds.Width();
-
-            // Set the paint for that size.
-            System.Diagnostics.Debug.WriteLine("Desired Text Size: " + desiredTextSize);
-            paint.TextSize = desiredTextSize;
-
-            foreach (var line in text.Split("\n"))
-            {
-                canvas.DrawText(line, (float)(Width * 0.99), y, paint);
-                y += paint.Descent() - paint.Ascent();
-            }
+            CanvasHelper.DrawPlacemarkView(canvas, _width, _height, _placemark);
         }
     }
 }

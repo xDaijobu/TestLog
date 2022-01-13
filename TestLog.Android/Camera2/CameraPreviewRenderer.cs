@@ -27,7 +27,6 @@ using File = Java.IO.File;
 using Environment = Android.OS.Environment;
 using Android.OS;
 using AndroidX.Camera.Core.Internal.Utils;
-using Rect = Android.Graphics.Rect;
 using Android.Content.PM;
 
 [assembly: ExportRenderer(typeof(CameraPreview), typeof(CameraPreviewRenderer))]
@@ -35,13 +34,13 @@ namespace TestLog.Droid.Camera2
 {
     public class CameraPreviewRenderer : ViewRenderer<CameraPreview, PreviewView>
     {
-        bool isDisposed;
+        private bool isDisposed;
         #region Camera Manager
-        File outputDirectory;
+        private File outputDirectory;
         private const string TAG = nameof(CameraPreviewRenderer);
         private const string FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS";
 
-        string AppName
+        private string AppName
         {
             get
             {
@@ -50,24 +49,24 @@ namespace TestLog.Droid.Camera2
             }
         }
 
-        Preview cameraPreview;
-        ImageAnalysis imageAnalyzer;
-        PreviewView previewView;
-        IExecutorService cameraExecutor;
-        CameraSelector cameraSelector;
-        ProcessCameraProvider cameraProvider;
-        ICamera camera;
-        ImageCapture imageCapture;
-        CameraLocation cameraLocation = CameraLocation.Rear;
-        PreviewObserver previewObserver;
-        ILifecycleOwner lifecycleOwner
+        private Preview cameraPreview;
+        private ImageAnalysis imageAnalyzer;
+        private PreviewView previewView;
+        private IExecutorService cameraExecutor;
+        private CameraSelector cameraSelector;
+        private ProcessCameraProvider cameraProvider;
+        private ICamera camera;
+        private ImageCapture imageCapture;
+        private CameraLocation cameraLocation = CameraLocation.Rear;
+        private PreviewObserver previewObserver;
+        private ILifecycleOwner lifecycleOwner
         {
             get
             {
                 return _context is ILifecycleOwner _lifecycleOwner ? _lifecycleOwner : _context.GetActivity() as ILifecycleOwner;
             }
         }
-        MediaOptions mediaOptions;
+        private MediaOptions mediaOptions;
         #endregion
         private CameraPreview _currentElement;
         private readonly Context _context;
@@ -268,7 +267,7 @@ namespace TestLog.Droid.Camera2
             if (string.IsNullOrEmpty(mediaOptions?.Directory))
                 mediaDir = Environment.GetExternalStoragePublicDirectory(System.IO.Path.Combine(Environment.DirectoryPictures, AppName));
             else
-                mediaDir = Environment.GetExternalStoragePublicDirectory(System.IO.Path.Combine(Environment.DirectoryPictures, AppName));
+                mediaDir = new File(mediaOptions.Directory);
 
             System.Diagnostics.Debug.WriteLine("MediaDir Path: " + mediaDir.Path);
             if (mediaDir != null && mediaDir.Exists())
@@ -328,7 +327,6 @@ namespace TestLog.Droid.Camera2
 
         public void SetZoomAndFocusTouchListener()
         {
-            // TODO Cris: bkin opsi hanya bisa di Zoom / Focus / 2 2 nya
             //#region Pinch to Zoom
             //ScaleGestureListener listener = new ScaleGestureListener(camera.CameraControl, camera.CameraInfo);
             //ScaleGestureDetector scaleGestureDetector = new ScaleGestureDetector(_context, listener);
@@ -519,37 +517,7 @@ namespace TestLog.Droid.Camera2
             Bitmap mutableBitmap = originalImage.Copy(Bitmap.Config.Argb8888, true);
             Canvas canvas = new Canvas(mutableBitmap);
 
-            string text = $"Latitude: {placemark?.Location?.Latitude}\n" +
-                          $"Longitude: {placemark?.Location?.Longitude}\n" +
-                          $"{placemark?.CountryName}";
-
-            float x = mutableBitmap.Width, y = mutableBitmap.Height / 2;
-            using (Paint paint = new Paint())
-            {
-                paint.Color = Android.Graphics.Color.White;
-                paint.AntiAlias = true;
-                paint.TextAlign = Paint.Align.Right;
-
-                // set text size for width
-                float testTextSize = 48f;
-                // Get the bounds of the text, using our testTextSize.  
-                paint.TextSize = testTextSize;
-                Rect bounds = new Rect();
-                paint.GetTextBounds(text, 0, text.Length, bounds);
-
-                // Calculate the desired size as a proportion of our testTextSize.
-                float desiredTextSize = testTextSize * originalImage.Width / bounds.Width();
-
-                // Set the paint for that size.
-                System.Diagnostics.Debug.WriteLine("Desired Text Size: " + desiredTextSize);
-                paint.TextSize = desiredTextSize;
-
-                foreach (string line in text.Split("\n"))
-                {
-                    canvas.DrawText(line, (float)(x * 0.99), y, paint);
-                    y += paint.Descent() - paint.Ascent();
-                }
-            }
+            CanvasHelper.DrawPlacemarkView(canvas, mutableBitmap.Width, mutableBitmap.Height, placemark);
 
             canvas.Dispose();
             return mutableBitmap;
